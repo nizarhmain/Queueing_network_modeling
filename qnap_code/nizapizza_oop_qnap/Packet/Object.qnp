@@ -1,0 +1,11 @@
+
+&******************************************************************
+& DEFINIZIONE DELL' OGGETTO PACKET
+&******************************************************************
+
+&BIRTH: Utilizzato per monitorare i tempi di round-trip.
+&DIME: Lunghezza in byte del pacchetto.
+CUSTOMER OBJECT PACKET;
+    REAL BIRTH;
+    INTEGER DIME;
+END;

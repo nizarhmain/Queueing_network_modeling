@@ -1,0 +1,132 @@
+
+
+& ****************************
+& STAZIONI HOST
+&******
+
+/STATION/
+ NAME  =  *HOST.USER;
+ SCHED = FIFO;
+ SERVICE(EMISSION) = BEGIN
+            EXP(TEMPO);
+            PAK := NEW(PACKET);
+            PAK.TYP:= "data";
+            PAK.TYPE:="rich";
+            PAK.SOUR_ID:= ID;
+	    	PAK.DEST_ID:= DEST;
+            PAK.DIME := LUNGH;
+            PAK.BIRTH :=TIME;
+            TIME_PART(PAK.SOUR_ID,PAK.DEST_ID):= PAK.BIRTH;
+            
+            TRANSIT(PAK,CONTROL,EMISSION); 
+           END;
+ SERVICE (RICHIN) = BEGIN
+                EXP(TEMPO);
+		RISP:= NEW(PACKET);
+                RISP.TYP := "data";
+                RISP.TYPE := "risp";
+            	RISP.DEST_ID:= DEST_ID;
+                RISP.SOUR_ID:= ID;
+	    	RISP.DIME := LUNGH;
+            	RISP.BIRTH :=TIME;
+	    	TRANSIT(RISP,CONTROL,RICHIN);
+ 	       END;
+ SERVICE (WEBAP)= BEGIN
+		WITH (CUSTOMER::WEBAPP) DO BEGIN
+		&PRINT ("HOST:USER L=",L,"OP=",OP);
+		TRANSIT (CONTROL);
+		END;
+		END;
+ TRANSIT = OUT; 
+
+
+ /STATION/                                     
+ NAME = *HOST.CONTROL;
+ SERVICE = P(WINDOW);          
+ TRANSIT = PROTOCOL;                       
+  
+ /STATION/                                    
+ NAME = *HOST.WINDOW;
+ TYPE = SEMAPHORE,MULTIPLE(WIN_SIZE);
+
+ /STATION/
+ NAME = *HOST.TIMER;
+ SERVICE= BEGIN
+	   CST(TIME_OUT);
+	   TYP:="data";                                      
+	   TRANSIT(PROTOCOL,EMISSION,1);   
+	   END;
+	   
+	   
+/STATION/
+ NAME = *HOST.WEBTIMER;
+ SERVICE (WEBAP) = BEGIN
+ 		WITH (CUSTOMER::WEBAPP) DO BEGIN
+ 	   	CST(WTOUT);
+		&PRINT ("WTOUT",WTOUT);
+ 	   	TRANSIT (PROTOCOL);
+ 	   	END;
+ 	   END;   
+	   
+ /STATION/ 
+ NAME = *HOST.PROTOCOL; 
+ SCHED = PRIOR;	                            	  
+ SERVICE(EMISSION) =BEGIN
+		PROT_EMI(T_EMI_I,T_EMI_A);
+		    END;
+ SERVICE(WEBAP) = BEGIN
+		PROT_WEB(T_EMI_I,T_EMI_A);
+		END;
+ SERVICE(RICHIN) = BEGIN
+			PROT_EMI(T_EMI_I,T_EMI_A);
+		   END;
+ SERVICE(RECEPT) = BEGIN 
+			PROT_REC(T_REC_I,T_REC_A,ID);
+		   END;
+ TRANSIT(RECEPT) = OUT; 
+ 
+                	
+
+ /STATION/
+ NAME = *HOST.ACCESS_E;
+ SERVICE = IF CUSTOMER IS WEBAPP THEN 
+		BEGIN
+		IF ((CUSTOMER::WEBAPP).TYPE="web") OR ((CUSTOMER::WEBAPP).TYPE="risweb") THEN
+			BEGIN
+				PRINT("*********************************");
+				PRINT("        EMESSO PACCHETTO:        ");
+				PRINT("*********************************");
+				PRINT("- DIMENSIONE: ",(CUSTOMER::WEBAPP).N);
+				PRINT("- TYPE: ", (CUSTOMER::WEBAPP).TYPE);
+				PRINT("- SOURID: ",(CUSTOMER::WEBAPP).SOUR_ID);
+				PRINT("- SOURNP: ",(CUSTOMER::WEBAPP).SOUR_NP);
+				PRINT("- DESTID: ",(CUSTOMER::WEBAPP).DEST_ID);
+				PRINT("- DESTNP: ",(CUSTOMER::WEBAPP).DEST_NP);
+				PRINT("- SEQNUM: ",(CUSTOMER::WEBAPP).SEQ_N);
+				PRINT("- WTOUT: ",(CUSTOMER::WEBAPP).WTOUT);
+				PRINT("- TIME: ",TIME);
+				PRINT("*********************************");
+			END
+		ELSE
+			BEGIN
+				PRINT("DIM.EMESSO:",(CUSTOMER::WEBAPP).N,"TYPE ",TYPE," HOST NUMERO: ",ID,"SEQNUM: ",(CUSTOMER::WEBAPP).SEQ_N);
+				PRINT("TIME: ",TIME);
+			END;
+ 		ACC_EMI(LI,LA,(CUSTOMER::WEBAPP).N);
+		END
+ 		ELSE ACC_EMI(LI,LA,0);
+ & Una volta finita la procedura si inoltra su NETWORK che corrisponde alla coda R della lINE_HR che permette il collegamento host-router
+ TRANSIT=NETWORK;	
+
+ /STATION/
+ NAME = *HOST.ACCESS_R;
+ SERVICE = IF CUSTOMER IS WEBAPP THEN
+		BEGIN
+			PRINT("DIM.RICEVUTO:",(CUSTOMER::WEBAPP).N,"TYPE ",TYPE,"HOST NUMERO: ",ID,"SEQNUM: ",(CUSTOMER::WEBAPP).SEQ_N);
+			ACC_REC(LI,LA,(CUSTOMER::WEBAPP).N)
+		END
+ 		ELSE 
+		 	ACC_REC(LI,LA,0);
+ TRANSIT=PROTOCOL;
+
+ 

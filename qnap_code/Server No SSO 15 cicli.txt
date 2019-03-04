@@ -1,0 +1,926 @@
+ 
+  SIMULOG   ***  QNAP2  ***  ( 15-09-2000  ) V 9.4   
+  (C)  COPYRIGHT BY CII HONEYWELL BULL AND INRIA, 1986
+ 
+ 
+      1 &*****************************
+      2 & Simulatore.qnp
+      3 &*****************************
+      4  
+      5 &  RESTORE DEL FILE DI OGGETTI
+      6  
+      7 /DECLARE/ FILE F;
+      8 /EXEC/ BEGIN
+      9 	FILASSIGN(F,"LIB.lis");
+     10 	OPEN(F,1);
+     11 	RESTORE(F,"OGGETTI");
+     12 	END;
+... MODEL RESTORED : OGGETTI
+ (0J0H01)                     ... SKIP TO NEXT COMMAND
+    957  
+    958 & PROCEDURA NewLine
+    959  
+    960 /DECLARE/
+    961     PROCEDURE NewLine;
+    962     STRING S;
+    963     BEGIN
+    964 	S:=GETLN(STRING,2);
+    965 	IF INDEX(S,";")=0 THEN BEGIN
+    966 	WRITELN(" (!); not found:[",S,"]");
+    967 	ABORT;
+    968      END;
+    969     END;
+    970  
+    971 & PROCEDURA BuildMod
+    972  
+    973    PROCEDURE BuildMod;
+    974    INTEGER N_Hosts,N_Router,N_Vie,N_soft,idh,idr,idv,I,J,K,idter,idhost;
+    975  
+    976    BEGIN
+    977  
+    978 & VARIABILI GLOBALI
+    979  
+    980 		N_Hosts := GET(INTEGER);
+    981 		N_Router:= GET(INTEGER);
+    982 		N_Vie:=GET(INTEGER);
+    983 	    N_soft:=GET(INTEGER);
+    984 	
+    985 	    NHTEST:= N_Hosts;
+    986 	    NRTEST:=N_Router;
+    987 	    NVTEST:=N_Vie;
+    988 	    NSOFTW:=N_soft;
+    989 	
+    990 	    LINE_CAP:=GET(REAL);
+    991 	    REC_CAP:= GET(REAL);
+    992 	    CAP_BUF:= GET(REAL);
+    993 	    NewLine;
+    994 	    T_MAX:=GET(REAL);
+    995 	    TEMPO := GET(REAL);
+    996 	    PERIODO:=GET(REAL);
+    997 	    NewLine;
+    998  
+    999 & GENERAZIONE ROUTERS
+   1000  
+   1001 	  IF (N_Router > 0) THEN
+   1002 	       FOR I:=1 STEP 1 UNTIL N_Router DO BEGIN
+   1003 	       idr :=GET(INTEGER);
+   1004 	       ROUTER#(idr):=NEW(ROUTER,idr,GET(INTEGER));
+   1005 	       WITH ROUTER#(idr) DO BEGIN
+   1006 	       ROUTER#(idr).RATE := GET(REAL);
+   1007 	       ROUTER#(idr).P_ERR := GET(REAL);
+   1008 	       END;
+   1009 	 NewLine;
+   1010  END;
+   1011  
+   1012 & GENERAZIONE VIE E CONNESSIONI A ROUTER DI USCITA
+   1013  
+   1014  IF (N_Vie > 0) THEN
+   1015    FOR I:=1 STEP 1 UNTIL N_Vie DO BEGIN
+   1016    idv :=GET(INTEGER);
+   1017    VIA#(idv):=NEW(VIA,idv,GET(REAL));
+   1018       WITH VIA#(idv) DO BEGIN
+   1019       idr:=GET(INTEGER);
+   1020       NEXT_R:=ROUTER#(idr).CPU;
+   1021       END;
+   1022  NewLine;
+   1023  END;
+   1024  
+   1025 & ISTRADAMENTI ROUTER->ROUTER
+   1026  
+   1027     FOR I:=1 STEP 1 UNTIL N_Router DO BEGIN
+   1028     idr:=GET(INTEGER);
+   1029 	WITH ROUTER#(idr) DO BEGIN
+   1030 	     FOR J:=1 STEP 1 UNTIL N DO BEGIN
+   1031 	 	K:=GET(INTEGER);
+   1032 		INSTR(J):=VIA#(K).CANALE;
+   1033 		PROB(J):=GET(REAL);
+   1034 		END;
+   1035                 END;
+   1036 	NewLine;
+   1037     END;
+   1038  
+   1039 & GENERAZIONE HOSTS E LINE_HR
+   1040  
+   1041    IF (N_Hosts > 0) THEN
+   1042    FOR I:=1 STEP 1 UNTIL N_Hosts DO BEGIN
+   1043         idh:=GET(INTEGER);
+   1044         HOSTS#(idh):=NEW(HOST,idh);
+   1045         WITH HOSTS#(idh) DO BEGIN
+   1046  
+   1047 	   HOSTS#(idh).T_EMI_I := GET(REAL);
+   1048 	   HOSTS#(idh).T_EMI_A := GET(REAL);
+   1049 	   HOSTS#(idh).T_REC_I := GET(REAL);
+   1050 	   HOSTS#(idh).T_REC_A := GET(REAL);
+   1051 	   HOSTS#(idh).TIME_OUT := GET(REAL);
+   1052 	   HOSTS#(idh).WIN_SIZE := GET(INTEGER);
+   1053 	   HOSTS#(idh).LI := GET(INTEGER);
+   1054 	   HOSTS#(idh).SSO := GET(INTEGER);
+   1055 	   HOSTS#(idh).LA := GET(INTEGER);
+   1056 	   END;
+   1057  
+   1058 	LINE_HR#(idh):=NEW(LINE_HR,GET(REAL));
+   1059  
+   1060 & CONNESSIONI ROUTER-HOST
+   1061  
+   1062     idr:=GET(INTEGER);
+   1063     HOSTS#(idh).ID_R := idr;
+   1064     ROUTER#(idr).S(idh):=HOSTS#(idh).ACCESS_R;
+   1065     NewLine;
+   1066     END;
+   1067  
+   1068 & CONNESSIONI HOST-ROUTER
+   1069  
+   1070       IF (N_Hosts > 0) THEN
+   1071       FOR I:=1 STEP 1 UNTIL N_Hosts DO BEGIN
+   1072 	   HOSTS#(I).NETWORK:=LINE_HR#(I).R;
+   1073 	
+   1074          LINE_HR#(I).ROUT:=ROUTER#(HOSTS#(I).ID_R).CPU;
+   1075 	 END;
+   1076  
+   1077  
+   1078 &--------------------------------------------------
+   1079 & COSTRUZIONE TERMINALE E CONNESSIONI TERMINAL-HOST
+   1080 &--------------------------------------------------
+   1081  
+   1082 IF (N_Hosts > 0) THEN
+   1083 FOR I:=1 STEP 1 UNTIL N_Hosts DO
+   1084 BEGIN
+   1085   	idter := GET(INTEGER);
+   1086 	TERM#(idter):=NEW(TERMINAL,idter);
+   1087      	WITH TERM#(idter) DO BEGIN
+   1088            TERM#(idter).ACTIVES := GET(BOOLEAN);
+   1089            TERM#(idter).NAME := GET(STRING);
+   1090 	   PRINT ("GEN",TERM#(idter).ACTIVES, TERM#(idter).NAME);
+   1091 	   TERM#(idter).REQLENGHT := GET(INTEGER);
+   1092            TERM#(idter).PROCESS := GET(REAL);
+   1093 	   TERM#(idter).PROC_D := GET(REAL);
+   1094      	END;
+   1095         LINE_TH#(idter):=NEW(LINE_TH,GET(REAL));
+   1096 	
+   1097 & CONNESSIONI HOST-TERMINAL
+   1098  
+   1099 	 idhost:=GET(INTEGER);
+   1100 	 TERM#(idter).ID_H := idhost;
+   1101          HOSTS#(idhost).HOTE:=LINE_TH#(idter).HQ;
+   1102 	 LINE_TH#(idter).TIN:=TERM#(idter).ACCESS_H;
+   1103          NewLine;
+   1104 	END;
+   1105  
+   1106  
+   1107 & CONNESSIONI TERMINAL-HOST
+   1108  
+   1109         IF (N_Hosts > 0) THEN
+   1110         FOR I:=1 STEP 1 UNTIL N_Hosts DO BEGIN
+   1111 	   TERM#(I).PORTA:=LINE_TH#(I).QH;
+   1112 	   LINE_TH#(I).TOUT:=HOSTS#(TERM#(I).ID_H).USER;
+   1113 END;
+   1114  
+   1115 &--------------------------------------------------
+   1116 & COSTRUZIONE ARRY SOFTWARE
+   1117 &--------------------------------------------------
+   1118  IF (N_soft > 0) THEN
+   1119   FOR I:=1 STEP 1 UNTIL (N_soft) DO BEGIN
+   1120   	SW#(I):=NEW (SOFTWARE);
+   1121   	SW#(I).IDS:=GET(INTEGER);
+   1122   	SW#(I).EXIT:=GET(INTEGER);
+   1123   	IF (SW#(I).IDS<>0) THEN BEGIN
+   1124   		SW#(I).FA:= NEW (FILE);
+   1125   		FILASSIGN(SW#(I).FA,GET(STRING));
+   1126   		END
+   1127   	ELSE
+   1128 		IF(HOSTS#(SW#(I).EXIT).SSO=1)THEN BEGIN
+   1129   		SW#(I).FA:= NEW (FILE);
+   1130   		FILASSIGN(SW#(I).FA,GET(STRING));
+   1131   		END
+   1132 		ELSE
+   1133   		SW#(I).FA:= SW#(GET(INTEGER)).FA;
+   1134   	NewLine;
+   1135   	END;
+   1136  
+   1137  
+   1138 &-------------
+   1139         END;
+   1140  
+   1141 & LETTURA MODELLO DA FILE
+   1142  
+   1143 /DECLARE/ FILE H;
+   1144 /EXEC/ BEGIN
+   1145 	  FILASSIGN(H,"model.dat");
+   1146 	  OPEN(H,1);
+   1147              END;
+   1148  
+   1149 /CONTROL/ UNIT = GET(H);
+   1150 /EXEC/ BEGIN
+   1151            BuildMod;
+   1152            CLOSE(H);
+   1153            END;
+      1 & VARIABILI GLOBALI
+      2   &Numero Hosts  Numero Router Numero Vie Numero Software   Capacità Emi
+ssione     Capacità Ricezione     Capacità Buffe
+      3          16            8          17       4                   128.0    
+           256.0                  400.0 ;
+      4 & SIMULAZIONE
+      5 & TMAX     TEMPO RQ    PERIOD
+      6  500000.0   120.0      1000.0;
+      7 & ROUTERS
+      8   &   ID   Uscite  Rate  P_Err
+      9        1      1   100.0  0.001;
+     10        2      3   123.0  0.001;
+     11        3      1   111.0  0.001;
+     12        4      2   122.0  0.001;
+     13        5      5   100.0  0.001;
+     14        6      2   123.0  0.001;
+     15        7      1   111.0  0.001;
+     16        8      2    50.0  0.001;
+     17 & VIE
+     18 & ID        Tempo Propag    Router Dest
+     19    1            32.0           1;
+     20    2            32.0           2;
+     21    3            54.0           4;
+     22    4            34.0           5;
+     23    5            11.7           4;
+     24    6            22.0           8;
+     25    7            22.0           4;
+     26    8            12.4           8;
+     27    9            21.0           6;
+     28   10            10.5           6;
+     29   11            10.5           5;
+     30   12            20.0           7;
+     31   13            20.0           6;
+     32   14            11.0           3;
+     33   15            11.0           5;
+     34   16            32.0           3;
+     35   17            54.0           2;
+     36 & ISTRADAMENTI ROUTER
+     37      &Router_ID     Via IstrProb  Via Istr Prob Via IstrProb Via IstrPro
+b Via IstrProb
+     38              1       2   1.0;
+     39              2       1   0.4       3   0.3      16  0.3;
+     40              3      15   1.0;
+     41              4       4   0.6       6   0.4;
+     42              5       5   0.2       8   0.1      10  0.2      14     0.2 
+  17  0.3;
+     43              6      11   0.6      12   0.4;
+     44              7      13   1.0;
+     45              8       7   0.5       9   0.5;
+     46 & HOSTS
+     47  & ID      TEI     TEA   TRI    TRA     TIME_OUT WIN_SIZ LI SSO LA   Lin
+eHR Router
+     48       1    12.1    1.0   4.3    1.1       800.0     10   55  0  1   12.0
+    1;
+     49       2    12.0    2.0   4.6    1.2       804.0     11   55  0  1   13.0
+    1;
+     50       3    13.0    1.5   6.4    1.3       780.0     12   55  0  2   12.6
+    1;
+     51       4    15.0    1.0   5.0    1.8       800.0     20   55  0  2   10.0
+    1;
+     52       5    12.0    1.0   4.3    1.1       803.0     12   55  0  1   11.0
+    4;
+     53       6    12.3    2.0   5.2    1.2       803.0     12   55  0  1   12.0
+    4;
+     54       7    13.0    1.5   5.0    1.3       803.2     14   55  0  2   13.0
+    4;
+     55       8    14.0    1.8   4.1    1.5       802.4     12   55  0  1   15.0
+    8;
+     56       9    13.0    0.6   5.0    1.1       802.0     13   55  0  1   12.0
+    8;
+     57      10    13.7    0.8   6.0    1.2       803.0     14   55  0  2   10.3
+    7;
+     58      11    12.5    0.9   3.0    1.6       780.0     15   55  0  1   9.6 
+    6;
+     59      12    11.3    1.1   2.5    1.9       801.0     13   55  0  2   8.5 
+    6;
+     60      13    10.7    1.0   2.9    2.0       789.0     12   55  0  1   13.0
+    5;
+     61      14    11.9    2.0   2.5    1.0       803.0     11   55  0  2   11.3
+    3;
+     62      15    12.5    0.8   2.4    1.3       804.2     10   55  0  1   12.2
+    3;
+     63      16    13.0    0.9   3.0    1.7       805.1     15   55  0  2   14.7
+    2;
+     64  
+     65  
+     66 & Terminal
+     67 &IDT Actives Name   Lenght Tempo CPU Tempo Disk Line TH  IDH
+     68 1    TRUE    "T1"    120    0.0045      0.015    1.20     1;
+ GENTRUET1
+     69 2    TRUE    "T2"    123    0.0045      0.015    1.30     2;
+ GENTRUET2
+     70 3    TRUE    "T3"    124    0.0045      0.015    1.26     3;
+ GENTRUET3
+     71 4    TRUE    "T4"    135    0.0045      0.015    1.00     4;
+ GENTRUET4
+     72 5    TRUE    "T5"    120    0.0045      0.015    1.10     5;
+ GENTRUET5
+     73 6    TRUE    "T6"    123    0.0045      0.015    1.20     6;
+ GENTRUET6
+     74 7    TRUE    "T7"    201    0.0045      0.015    1.30     7;
+ GENTRUET7
+     75 8    FALSE   "T8"    204    0.0045      0.015    1.50     8;
+ GENFALSET8
+     76 9    TRUE    "T9"    112    0.0045      0.015    1.20     9;
+ GENTRUET9
+     77 10   TRUE    "T10"   180    0.0045      0.015    1.03    10;
+ GENTRUET10
+     78 11   TRUE    "T11"   110    0.0045      0.015    0.96    11;
+ GENTRUET11
+     79 12   FALSE   "T12"   112    0.0045      0.015    0.85    12;
+ GENFALSET12
+     80 13   TRUE    "T13"   302    0.0045      0.015    1.30    13;
+ GENTRUET13
+     81 14   TRUE    "T14"   145    0.0045      0.015    1.13    14;
+ GENTRUET14
+     82 15   TRUE    "T15"   143    0.0045      0.015    1.22    15;
+ GENTRUET15
+     83 16   TRUE   "T16"   100    0.0045      0.015    1.47    16;
+ GENTRUET16
+     84 & Web Application
+     85 &IDS   exit     File
+     86  1   8   	"server.app";
+     87  0   12         1;
+     88  0   13    		1;
+     89  0   10         1;
+   1154  
+   1155 & INIZIALIZZAZIONE DEI FILE *.STS
+   1156  
+   1157 /DECLARE/ FILE HOS,ROT,LIN,TER,ROUND,RES;
+   1158           INTEGER IH,IR,IL;
+   1159  
+   1160 /EXEC/ BEGIN
+   1161 	  FILASSIGN(HOS,"Hosts.sts");
+   1162 	  FILASSIGN(ROT,"Routers.sts");
+   1163 	  FILASSIGN(LIN,"Lines.sts");
+   1164 	  FILASSIGN(TER,"Terminals.sts");
+   1165           FILASSIGN(ROUND,"RTT.sts");
+   1166           FILASSIGN(RES,"RES.sts");
+   1167           OPEN(TER,2);
+   1168 	  OPEN(HOS,2);
+   1169 	  OPEN(ROT,2);
+   1170 	  OPEN(LIN,2);
+   1171           OPEN(ROUND,2);
+   1172           OPEN(RES,2);
+   1173                  FOR IH:=1 STEP 1 UNTIL NHTEST DO BEGIN
+   1174 	         WRITE(HOS,"HOST",IH);
+   1175                  WRITE(HOS," ");
+   1176 	 END;
+   1177 	 WRITELN(HOS);
+   1178 	
+   1179                  FOR IR:=1 STEP 1 UNTIL NRTEST DO BEGIN
+   1180 	 WRITE(ROT,"ROUTER",IR);
+   1181                  WRITE(ROT," ");
+   1182 	 END;
+   1183 	 WRITELN(ROT);
+   1184  
+   1185                  FOR IL:=1 STEP 1 UNTIL NVTEST DO BEGIN
+   1186 	 WRITE(LIN,"VIA",IL);
+   1187                  WRITE(LIN," ");
+   1188 	 END;
+   1189 	 WRITELN(LIN);
+   1190 	
+   1191     END;
+   1192  
+   1193  
+   1194 /DECLARE/
+   1195 PROCEDURE NETTEST;
+   1196 INTEGER I,J;
+   1197 INTEGER FLAG;
+   1198  
+   1199 BEGIN
+   1200                   FOR I:=1 STEP 1 UNTIL NHTEST DO BEGIN
+   1201                   WRITE(HOS,HOSTS#(I).USER.NBOUT);
+   1202 	          WRITE(HOS," ");
+   1203                   END;
+   1204                   WRITELN(HOS);
+   1205  
+   1206                   FOR I:=1 STEP 1 UNTIL NRTEST DO BEGIN
+   1207                   WRITE(ROT,ROUTER#(I).CPU.NBOUT);
+   1208 	  WRITE(ROT," ");
+   1209                   END;
+   1210                   WRITELN(ROT);
+   1211  
+   1212                   FOR I:=1 STEP 1 UNTIL NVTEST DO BEGIN
+   1213                   WRITE(LIN,VIA#(I).CANALE.NBOUT);
+   1214                   WRITE(LIN," ");
+   1215 	  END;
+   1216                   WRITELN(LIN);
+   1217  
+   1218  
+   1219          WRITELN(TER,"*************************************");
+   1220          WRITELN(TER,"      Tempo di simulazione:",TIME);
+   1221          WRITELN(TER,"*************************************");
+   1222           FOR I:=1 STEP 1 UNTIL NHTEST DO BEGIN
+   1223                  WRITELN(TER,"-------------------------------------");
+   1224 	         WRITELN(TER,"             TERMINAL ",I);
+   1225                  WRITELN(TER,"-------------------------------------");
+   1226                  WRITE(TER,"RICHIESTE EMESSE: ");
+   1227                   WRITELN(TER,TERM#(I).DISK.NBOUT(EMISSION));
+   1228                   WRITE(TER,"RICHIESTE RICEVUTE: ");
+   1229                   WRITELN(TER,TERM#(I).DISK.NBOUT(RICHIN));
+   1230                    WRITE(TER,"RISPOSTE RICEVUTE:");
+   1231                   WRITELN(TER,TERM#(I).DISK.NBOUT(RISPOSTA));
+   1232                     WRITE(TER,"TOTALE: ");
+   1233                   WRITELN(TER,TERM#(I).DISK.NBOUT);
+   1234                  WRITELN(TER);
+   1235 	  END;
+   1236                   WRITELN(TER);
+   1237  
+   1238 	 WRITELN(ROUND,"*************************************");
+   1239          WRITELN(ROUND,"      Tempo di simulazione:",TIME);
+   1240          WRITELN(ROUND,"*************************************");
+   1241          FOR I:=1 STEP 1 UNTIL NHTEST DO BEGIN
+   1242              WRITE(ROUND,"SORGENTE:",I);
+   1243              FOR J:=1 STEP 1 UNTIL NHTEST DO BEGIN
+   1244                 IF (RTT(I,J)<>0) THEN
+   1245                 BEGIN
+   1246                    FLAG:=1
+   1247                    WRITELN(ROUND);
+                                 |
+ (050103)  ==>WARNING (COMPILE) : ";" HAS BEEN ADDED BEFORE THIS ELEMENT
+   1248                    WRITE(ROUND," DESTINAZIONE: ",J);
+   1249                    WRITE(ROUND," RTT: ",RTT(I,J));
+   1250                    WRITELN(ROUND," ");
+   1251                 END
+   1252              END;
+                       |
+ (050103)  ==>WARNING (COMPILE) : ";" HAS BEEN ADDED BEFORE THIS ELEMENT
+   1253                   IF (FLAG = 0) THEN WRITELN(ROUND," NESSUNA RICHIESTA I
+NVIATA ");
+   1254                   FLAG:=0;
+   1255                   WRITELN(ROUND," ");
+   1256           END;
+   1257                   WRITELN(ROUND);
+   1258  
+   1259  
+   1260  
+   1261  & PER AVERE I TEMPI DI SIMULAZIONE E I RELATIVI RTT TRA I TERMINALI 4 E
+ 8
+   1262  
+   1263                    WRITE(RES,TIME, " ; ");
+   1264                    WRITELN(RES,RTT(4,8),";");
+   1265  
+   1266 END;
+   1267  
+   1268 /CONTROL/
+   1269 CLASS=ALL QUEUE;
+   1270 TMAX=T_MAX;
+   1271 PERIOD=PERIODO;
+   1272 TEST=NETTEST;
+   1273 &&TRACE=0,10000;
+   1274  
+   1275 /EXEC/
+   1276 	SIMUL;
+ 
+ *** SIMULATION ***
+      1 & Webterm destinazione Software destinazione Tempo ritasmission
+      2 12    2    8000;
+ PARTO DAL CLIENT         8 
+      3  
+      4 & Descrizione applicazione
+      5 & Acpu	Adisk	Aterm	Net	Bcpu	Bdisk
+      6 1   1  10   40  15  15;
+ Sono nel server web       12 
+      7 1   0   2   20  3  1;
+ SONO NEL CLIENT         8 
+ COUNT=        2 
+ CHECK        2 
+      8 3   1   7   20  3   1;
+ Sono nel server web       12 
+      9 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=        4 
+ CHECK        4 
+     10 3   1   7   40  15  15;
+ Sono nel server web       13 
+     11 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=        6 
+ CHECK        6 
+     12 3   1   7   20  3   1;
+ Sono nel server web       13 
+     13 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=        8 
+ CHECK        8 
+     14 3   1   7   40  15  15;
+ Sono nel server web       12 
+     15 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       10 
+ CHECK       10 
+     16 3   1   7   20  3   1;
+ Sono nel server web       12 
+     17 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       12 
+ CHECK       12 
+     18 3   1   7   40  15  15;
+ Sono nel server web       13 
+     19 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       14 
+ CHECK       14 
+     20 3   1   7   20  3   1;
+ Sono nel server web       13 
+     21 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       16 
+ CHECK       16 
+     22 3   1   7   40  15  15;
+ Sono nel server web       12 
+     23 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       18 
+ CHECK       18 
+     24 3   1   7   20  3   1;
+ Sono nel server web       12 
+     25 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       20 
+ CHECK       20 
+     26 3   1   7   40  15  15;
+ Sono nel server web       13 
+     27 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       22 
+ CHECK       22 
+     28 3   1   7   20  3   1;
+ Sono nel server web       13 
+     29 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       24 
+ CHECK       24 
+     30 3   1   7   40  15  15;
+ Sono nel server web       12 
+     31 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       26 
+ CHECK       26 
+     32 3   1   7   20  3   1;
+ Sono nel server web       12 
+     33 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       28 
+ CHECK       28 
+     34 3   1   7   40  15  15;
+ Sono nel server web       13 
+     35 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       30 
+ CHECK       30 
+     36 3   1   7   20  3   1;
+ Sono nel server web       13 
+     37 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       32 
+ CHECK       32 
+     38 3   1   7   40  15  15;
+ Sono nel server web       12 
+     39 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       34 
+ CHECK       34 
+     40 3   1   7   20  3   1;
+ Sono nel server web       12 
+     41 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       36 
+ CHECK       36 
+     42 3   1   7   40  15  15;
+ Sono nel server web       13 
+     43 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       38 
+ CHECK       38 
+     44 3   1   7   20  3   1;
+ Sono nel server web       13 
+     45 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       40 
+ CHECK       40 
+     46 3   1   7   40  15  15;
+ Sono nel server web       12 
+     47 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       42 
+ CHECK       42 
+     48 3   1   7   20  3   1;
+ Sono nel server web       12 
+     49 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       44 
+ CHECK       44 
+     50 3   1   7   40  15  15;
+ Sono nel server web       13 
+     51 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       46 
+ CHECK       46 
+     52 3   1   7   20  3   1;
+ Sono nel server web       13 
+     53 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       48 
+ CHECK       48 
+     54 3   1   7   40  15  15;
+ Sono nel server web       12 
+     55 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       50 
+ CHECK       50 
+     56 3   1   7   20  3   1;
+ Sono nel server web       12 
+     57 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       52 
+ CHECK       52 
+     58 3   1   7   40  15  15;
+ Sono nel server web       13 
+     59 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       54 
+ CHECK       54 
+     60 3   1   7   20  3   1;
+ Sono nel server web       13 
+     61 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       56 
+ CHECK       56 
+     62 3   1   7   40  15  15;
+ Sono nel server web       12 
+     63 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       58 
+ CHECK       58 
+     64 3   1   7   20  3   1;
+ Sono nel server web       12 
+     65 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       60 
+ CHECK       60 
+     66 -1; && Fine applicazione
+ FINE APPLICAZIONE
+ ... TIME =       500000.00
+ *******************************************************************
+ *   NAME   *  SERVICE * BUSY PCT *  CUST NB * RESPONSE *  SERV NB *
+ *******************************************************************
+ *          *          *          *          *          *          *
+ *ROUTER 1. *          *          *          *          *          *
+ *CPU     . * 1.814    *0.1452E-04*0.1452E-04* 1.814    *         4*
+ *(WEBAP   )* 1.814    *0.1452E-04*0.1452E-04* 1.814    *         4*
+ *          *          *          *          *          *          *
+ *ROUTER 2. *          *          *          *          *          *
+ *CPU     . * 4.233    *0.1270E-03*0.1270E-03* 4.233    *        15*
+ *(WEBAP   )* 4.233    *0.1270E-03*0.1270E-03* 4.233    *        15*
+ *          *          *          *          *          *          *
+ *ROUTER 3. *          *          *          *          *          *
+ *CPU     . * 4.854    *0.8737E-04*0.8737E-04* 4.854    *         9*
+ *(WEBAP   )* 4.854    *0.8737E-04*0.8737E-04* 4.854    *         9*
+ *          *          *          *          *          *          *
+ *ROUTER 4. *          *          *          *          *          *
+ *CPU     . * 1.933    *0.4638E-04*0.4638E-04* 1.933    *        12*
+ *(WEBAP   )* 1.933    *0.4638E-04*0.4638E-04* 1.933    *        12*
+ *          *          *          *          *          *          *
+ *ROUTER 5. *          *          *          *          *          *
+ *CPU     . * 3.656    *0.2121E-03*0.2121E-03* 3.656    *        29*
+ *(WEBAP   )* 3.656    *0.2121E-03*0.2121E-03* 3.656    *        29*
+ *          *          *          *          *          *          *
+ *ROUTER 6. *          *          *          *          *          *
+ *CPU     . * 3.237    *0.1489E-03*0.1489E-03* 3.237    *        23*
+ *(WEBAP   )* 3.237    *0.1489E-03*0.1489E-03* 3.237    *        23*
+ *          *          *          *          *          *          *
+ *ROUTER 7. *          *          *          *          *          *
+ *CPU     . * 2.745    *0.6039E-04*0.6039E-04* 2.745    *        11*
+ *(WEBAP   )* 2.745    *0.6039E-04*0.6039E-04* 2.745    *        11*
+ *          *          *          *          *          *          *
+ *ROUTER 8. *          *          *          *          *          *
+ *CPU     . * 2.102    *0.2102E-04*0.2102E-04* 2.102    *         5*
+ *(WEBAP   )* 2.102    *0.2102E-04*0.2102E-04* 2.102    *         5*
+ *          *          *          *          *          *          *
+ *VIA    1. *          *          *          *          *          *
+ *CANALE  . * 32.00    *0.2560E-03*0.2560E-03* 32.00    *         4*
+ *(WEBAP   )* 32.00    *0.2560E-03*0.2560E-03* 32.00    *         4*
+ *          *          *          *          *          *          *
+ *VIA    2. *          *          *          *          *          *
+ *CANALE  . * 32.00    *0.2560E-03*0.2560E-03* 32.00    *         4*
+ *(WEBAP   )* 32.00    *0.2560E-03*0.2560E-03* 32.00    *         4*
+ *          *          *          *          *          *          *
+ *VIA    3. *          *          *          *          *          *
+ *CANALE  . * 54.00    *0.6480E-03*0.6480E-03* 54.00    *         6*
+ *(WEBAP   )* 54.00    *0.6480E-03*0.6480E-03* 54.00    *         6*
+ *          *          *          *          *          *          *
+ *VIA    4. *          *          *          *          *          *
+ *CANALE  . * 34.00    *0.6800E-03*0.6800E-03* 34.00    *        10*
+ *(WEBAP   )* 34.00    *0.6800E-03*0.6800E-03* 34.00    *        10*
+ *          *          *          *          *          *          *
+ *VIA    5. *          *          *          *          *          *
+ *CANALE  . * 11.70    *0.1170E-03*0.1170E-03* 11.70    *         5*
+ *(WEBAP   )* 11.70    *0.1170E-03*0.1170E-03* 11.70    *         5*
+ *          *          *          *          *          *          *
+ *VIA    6. *          *          *          *          *          *
+ *CANALE  . * 22.00    *0.8800E-04*0.8800E-04* 22.00    *         2*
+ *(WEBAP   )* 22.00    *0.8800E-04*0.8800E-04* 22.00    *         2*
+ *          *          *          *          *          *          *
+ *VIA    7. *          *          *          *          *          *
+ *CANALE  . * 22.00    *0.4400E-04*0.4400E-04* 22.00    *         1*
+ *(WEBAP   )* 22.00    *0.4400E-04*0.4400E-04* 22.00    *         1*
+ *          *          *          *          *          *          *
+ *VIA    8. *          *          *          *          *          *
+ *CANALE  . * 12.40    *0.2480E-04*0.2480E-04* 12.40    *         1*
+ *(WEBAP   )* 12.40    *0.2480E-04*0.2480E-04* 12.40    *         1*
+ *          *          *          *          *          *          *
+ *VIA    9. *          *          *          *          *          *
+ *CANALE  . * 21.00    *0.8400E-04*0.8400E-04* 21.00    *         2*
+ *(WEBAP   )* 21.00    *0.8400E-04*0.8400E-04* 21.00    *         2*
+ *          *          *          *          *          *          *
+ *VIA   10. *          *          *          *          *          *
+ *CANALE  . * 10.50    *0.1680E-03*0.1680E-03* 10.50    *         8*
+ *(WEBAP   )* 10.50    *0.1680E-03*0.1680E-03* 10.50    *         8*
+ *          *          *          *          *          *          *
+ *VIA   11. *          *          *          *          *          *
+ *CANALE  . * 10.50    *0.2100E-03*0.2100E-03* 10.50    *        10*
+ *(WEBAP   )* 10.50    *0.2100E-03*0.2100E-03* 10.50    *        10*
+ *          *          *          *          *          *          *
+ *VIA   12. *          *          *          *          *          *
+ *CANALE  . * 20.00    *0.4400E-03*0.4400E-03* 20.00    *        11*
+ *(WEBAP   )* 20.00    *0.4400E-03*0.4400E-03* 20.00    *        11*
+ *          *          *          *          *          *          *
+ *VIA   13. *          *          *          *          *          *
+ *CANALE  . * 20.00    *0.4400E-03*0.4400E-03* 20.00    *        11*
+ *(WEBAP   )* 20.00    *0.4400E-03*0.4400E-03* 20.00    *        11*
+ *          *          *          *          *          *          *
+ *VIA   14. *          *          *          *          *          *
+ *CANALE  . * 11.00    *0.8800E-04*0.8800E-04* 11.00    *         4*
+ *(WEBAP   )* 11.00    *0.8800E-04*0.8800E-04* 11.00    *         4*
+ *          *          *          *          *          *          *
+ *VIA   15. *          *          *          *          *          *
+ *CANALE  . * 11.00    *0.1980E-03*0.1980E-03* 11.00    *         9*
+ *(WEBAP   )* 11.00    *0.1980E-03*0.1980E-03* 11.00    *         9*
+ *          *          *          *          *          *          *
+ *VIA   16. *          *          *          *          *          *
+ *CANALE  . * 32.00    *0.3200E-03*0.3200E-03* 32.00    *         5*
+ *(WEBAP   )* 32.00    *0.3200E-03*0.3200E-03* 32.00    *         5*
+ *          *          *          *          *          *          *
+ *VIA   17. *          *          *          *          *          *
+ *CANALE  . * 54.00    *0.1188E-02*0.1259E-02* 57.25    *        11*
+ *(WEBAP   )* 54.00    *0.1188E-02*0.1259E-02* 57.25    *        11*
+ *          *          *          *          *          *          *
+ *HOST   8. *          *          *          *          *          *
+ *USER    . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *HOST   8. *          *          *          *          *          *
+ *CONTROL . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *HOST   8. *          *          *          *          *          *
+ *PROTOCOL. *0.1295    *0.7770E-06*0.7770E-06*0.1295    *         3*
+ *(WEBAP   )*0.1295    *0.7770E-06*0.7770E-06*0.1295    *         3*
+ *          *          *          *          *          *          *
+ *HOST   8. *          *          *          *          *          *
+ *ACCESS_E. *0.3741    *0.1496E-05*0.1496E-05*0.3741    *         2*
+ *(WEBAP   )*0.3741    *0.1496E-05*0.1496E-05*0.3741    *         2*
+ *          *          *          *          *          *          *
+ *HOST   8. *          *          *          *          *          *
+ *ACCESS_R. *0.2522E-01*0.1009E-06*0.1009E-06*0.2522E-01*         2*
+ *(WEBAP   )*0.2522E-01*0.1009E-06*0.1009E-06*0.2522E-01*         2*
+ *          *          *          *          *          *          *
+ *HOST   8. *          *          *          *          *          *
+ *TIMER   . * 964.2    *0.1928E-02*0.1928E-02* 964.2    *         1*
+ *(WEBAP   )* 964.2    *0.1928E-02*0.1928E-02* 964.2    *         1*
+ *          *          *          *          *          *          *
+ *LINE_HR8. *          *          *          *          *          *
+ *R       . * 15.00    *0.0000E+00*0.6000E-04* 15.00    *         2*
+ *(WEBAP   )* 15.00    *0.0000E+00*0.6000E-04* 15.00    *         2*
+ *          *          *          *          *          *          *
+ *HOST  12. *          *          *          *          *          *
+ *USER    . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *HOST  12. *          *          *          *          *          *
+ *CONTROL . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *HOST  12. *          *          *          *          *          *
+ *PROTOCOL. * 5.973    *0.3584E-04*0.3584E-04* 5.973    *         3*
+ *(WEBAP   )* 5.973    *0.3584E-04*0.3584E-04* 5.973    *         3*
+ *          *          *          *          *          *          *
+ *HOST  12. *          *          *          *          *          *
+ *ACCESS_E. *0.8287    *0.3315E-05*0.3315E-05*0.8287    *         2*
+ *(WEBAP   )*0.8287    *0.3315E-05*0.3315E-05*0.8287    *         2*
+ *          *          *          *          *          *          *
+ *HOST  12. *          *          *          *          *          *
+ *ACCESS_R. *0.2453    *0.9812E-06*0.9812E-06*0.2453    *         2*
+ *(WEBAP   )*0.2453    *0.9812E-06*0.9812E-06*0.2453    *         2*
+ *          *          *          *          *          *          *
+ *HOST  12. *          *          *          *          *          *
+ *TIMER   . * 2106.    *0.4212E-02*0.4212E-02* 2106.    *         1*
+ *(WEBAP   )* 2106.    *0.4212E-02*0.4212E-02* 2106.    *         1*
+ *          *          *          *          *          *          *
+ *LINE_H12. *          *          *          *          *          *
+ *R       . * 8.500    *0.0000E+00*0.3400E-04* 8.500    *         2*
+ *(WEBAP   )* 8.500    *0.0000E+00*0.3400E-04* 8.500    *         2*
+ *          *          *          *          *          *          *
+ *TERMINA8. *          *          *          *          *          *
+ *ACCESS_H. *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *TERMINA8. *          *          *          *          *          *
+ *CPU     . *0.1292E-01*0.8010E-06*0.8010E-06*0.1292E-01*        31*
+ *(WEBAP   )*0.1292E-01*0.8010E-06*0.8010E-06*0.1292E-01*        31*
+ *          *          *          *          *          *          *
+ *TERMINA8. *          *          *          *          *          *
+ *DISK    . *0.1452E-01*0.9000E-06*0.9000E-06*0.1452E-01*        31*
+ *(WEBAP   )*0.1452E-01*0.9000E-06*0.9000E-06*0.1452E-01*        31*
+ *          *          *          *          *          *          *
+ *TERMINA8. *          *          *          *          *          *
+ *SCH     . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*       124*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*       124*
+ *          *          *          *          *          *          *
+ *TERMINA8. *          *          *          *          *          *
+ *TERM    . * 7.454    *0.4622E-03*0.4622E-03* 7.454    *        31*
+ *(WEBAP   )* 7.454    *0.4622E-03*0.4622E-03* 7.454    *        31*
+ *          *          *          *          *          *          *
+ *LINE_TH8. *          *          *          *          *          *
+ *QH      . * 1.500    *0.0000E+00*0.3000E-05* 1.500    *         1*
+ *(WEBAP   )* 1.500    *0.0000E+00*0.3000E-05* 1.500    *         1*
+ *          *          *          *          *          *          *
+ *LINE_TH8. *          *          *          *          *          *
+ *HQ      . * 1.500    *0.0000E+00*0.3000E-05* 1.500    *         1*
+ *(WEBAP   )* 1.500    *0.0000E+00*0.3000E-05* 1.500    *         1*
+ *          *          *          *          *          *          *
+ *TERMIN12. *          *          *          *          *          *
+ *ACCESS_H. *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *TERMIN12. *          *          *          *          *          *
+ *CPU     . *0.1524E-01*0.9450E-06*0.9450E-06*0.1524E-01*        31*
+ *(WEBAP   )*0.1524E-01*0.9450E-06*0.9450E-06*0.1524E-01*        31*
+ *          *          *          *          *          *          *
+ *TERMIN12. *          *          *          *          *          *
+ *DISK    . *0.2177E-01*0.1350E-05*0.1350E-05*0.2177E-01*        31*
+ *(WEBAP   )*0.2177E-01*0.1350E-05*0.1350E-05*0.2177E-01*        31*
+ *          *          *          *          *          *          *
+ *TERMIN12. *          *          *          *          *          *
+ *SCH     . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*       124*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*       124*
+ *          *          *          *          *          *          *
+ *TERMIN12. *          *          *          *          *          *
+ *TERM    . * 6.688    *0.4146E-03*0.4146E-03* 6.688    *        31*
+ *(WEBAP   )* 6.688    *0.4146E-03*0.4146E-03* 6.688    *        31*
+ *          *          *          *          *          *          *
+ *LINE_T12. *          *          *          *          *          *
+ *QH      . *0.8500    *0.0000E+00*0.1700E-05*0.8500    *         1*
+ *(WEBAP   )*0.8500    *0.0000E+00*0.1700E-05*0.8500    *         1*
+ *          *          *          *          *          *          *
+ *LINE_T12. *          *          *          *          *          *
+ *HQ      . *0.8500    *0.0000E+00*0.1700E-05*0.8500    *         1*
+ *(WEBAP   )*0.8500    *0.0000E+00*0.1700E-05*0.8500    *         1*
+ *          *          *          *          *          *          *
+ *SOFTWAR1. *          *          *          *          *          *
+ *PROGRAM . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         2*
+ *(BOOT    )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *SOFTWAR1. *          *          *          *          *          *
+ *SORGENTE. * 18.01    *0.3603E-04*0.3603E-04* 18.01    *         1*
+ *(BOOT    )* 18.01    *0.3603E-04*0.3603E-04* 18.01    *         1*
+ *          *          *          *          *          *          *
+ *SOFTWAR1. *          *          *          *          *          *
+ *SERVIZIO. *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*        30*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*        30*
+ *          *          *          *          *          *          *
+ *SOFTWAR2. *          *          *          *          *          *
+ *PROGRAM . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(BOOT    )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *SOFTWAR2. *          *          *          *          *          *
+ *SORGENTE. * 20.18    *0.4037E-04*0.4037E-04* 20.18    *         1*
+ *(BOOT    )* 20.18    *0.4037E-04*0.4037E-04* 20.18    *         1*
+ *          *          *          *          *          *          *
+ *SOFTWAR2. *          *          *          *          *          *
+ *SERVIZIO. * 21.12    *0.1267E-02*0.1267E-02* 21.12    *        30*
+ *(WEBAP   )* 21.12    *0.1267E-02*0.1267E-02* 21.12    *        30*
+ *          *          *          *          *          *          *
+ *SOFTWAR3. *          *          *          *          *          *
+ *PROGRAM . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(BOOT    )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *SOFTWAR3. *          *          *          *          *          *
+ *SORGENTE. * 54.65    *0.1093E-03*0.1093E-03* 54.65    *         1*
+ *(BOOT    )* 54.65    *0.1093E-03*0.1093E-03* 54.65    *         1*
+ *          *          *          *          *          *          *
+ *SOFTWAR4. *          *          *          *          *          *
+ *PROGRAM . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(BOOT    )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *SOFTWAR4. *          *          *          *          *          *
+ *SORGENTE. * 17.59    *0.3518E-04*0.3518E-04* 17.59    *         1*
+ *(BOOT    )* 17.59    *0.3518E-04*0.3518E-04* 17.59    *         1*
+ *          *          *          *          *          *          *
+ *******************************************************************
+ ... END OF SIMULATION ...
+ 
+ 
+              MEMORY USED:     335183 WORDS OF 4 BYTES
+               (  2.23  % OF TOTAL MEMORY)
+   1277 /END/

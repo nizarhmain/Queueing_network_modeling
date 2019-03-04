@@ -1,0 +1,32 @@
+
+
+&****************
+& CPU DI UN ROUTER
+&****************
+/DECLARE/
+INTEGER PR;
+
+/STATION/
+ NAME = *ROUTER.CPU;
+ SCHED = FIFO,PRIOR;
+ SERVICE = BEGIN
+ 	   IF (TYP = "info") THEN 
+			& calcolo del tempo esponenziale, in base al tipo di pacchetto, e controllato se c'è perdita di pacchetti(in caso viene scartato)
+ 	   		EXP((HOSTS#(SOUR_ID).LI * 8)/RATE)
+           ELSE IF (TYP = "app" ) AND (CUSTOMER IS WEBAPP)   THEN
+		   		EXP(((CUSTOMER::WEBAPP).N * 8)/RATE)
+		   ELSE 
+		   		EXP((HOSTS#(SOUR_ID).LA * 8)/RATE);	
+           IF DRAW(P_ERR) THEN 
+		   		TRANSIT(OUT)
+           ELSE 
+		   	& Confrontare id del router collegato all host di destinazione con l'id del router nel quale si trova attualmente il pacchetto
+           	IF (HOSTS#(DEST_ID).ID_R = ID) THEN 
+					& if yes, viene mandato sull'array di puntatori S, il quale contiene i riferimenti alle code ACCESS_R degli host
+				   IF (CCLASS=WEBAP) THEN 
+				   		TRANSIT(S(DEST_ID))
+				   ELSE 
+				   		TRANSIT(S(DEST_ID),RECEPT); 
+           END;
+& viene transitato sull array di puntatori INSTR, il quale contiene i puntatori alle code CANALE delle vie che permettono la connessione router-router
+ TRANSIT=INSTR(1 STEP 1 UNTIL N),PROB,OUT;

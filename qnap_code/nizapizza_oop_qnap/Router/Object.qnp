@@ -1,0 +1,25 @@
+
+&********************************
+& DEFINIZIONE DELL' OGGETTO ROUTER
+&********************************
+
+ OBJECT ROUTER(ID,N);
+	& N è il numero degli altri router direttamente connessi
+	INTEGER N;
+	& Identificativo del router
+	INTEGER ID;
+	&Coda principale del router, calcola i tempi di trasmissione e instrada i pachetti sull'array S o su INSTR
+	QUEUE CPU;
+	& Contiene i puntatori alle varie code access_r degli host che sono connessi al router. Viene utilizzato quando un pacchetto o una webapp deve andara in un host direttamente collegato al router in cui si trova                          	        
+	REF QUEUE S(NH);
+	& contiene i puntatori alle varie code canale delle vie che servono per connettere i router.
+	REF QUEUE INSTR(N);                     
+	& probabilità che un pacchetto sia instradato verso una posizione dell array instradamento    
+	REAL PROB(N);
+	& capacita di trasmissione
+	REAL RATE;                
+	& probabilità di errore      	
+	REAL P_ERR;      	
+ END;
+
+

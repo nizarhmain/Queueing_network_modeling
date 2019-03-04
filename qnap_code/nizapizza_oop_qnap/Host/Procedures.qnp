@@ -1,0 +1,305 @@
+&*******************************************************
+& PROCEDURE PER DESCRIVERE I DIFFE3RENTI SERVIZI DELLE STAZIONI
+&*******************************************************
+	PROCEDURE GETNPVAL(DEST_ID);
+		INTEGER DEST_ID;
+		BEGIN
+			FOR J:=1 STEP 1 UNTIL NSOFTW DO BEGIN  
+				IF SW#(J).EXIT=DEST_ID THEN NPVAL:=J;
+			END;
+		END;
+
+
+&*******************************************************
+& PROCEDURE DI SERVIZIO
+&*******************************************************
+
+    PROCEDURE NewLn (FI);  		
+    REF FILE FI;
+    STRING S;
+    BEGIN
+      	S:=GETLN(FI,STRING,2);
+	IF INDEX(S,";")=0 THEN BEGIN
+	WRITELN(" (!), not found:[",S,"]");
+	ABORT;
+     END;  
+ 
+    END; 
+
+
+&*******************************************************
+& COPY_P: SALVATAGGIO TEMPORANEO DELLA COPIA DI UN PACCHETTO NEL TIMER
+&******************************************************* 
+ PROCEDURE COPY_P(C,SOUR,DEST);
+	INTEGER SOUR,DEST;
+	REF CUSTOMER C;
+	REF HOST RH; 
+	BEGIN
+		WITH CUSTOMER DO BEGIN
+		RH:= INCLUDING (QUEUE)::HOST;
+		C.DEST_ID:= DEST;
+		C.SOUR_ID:= SOUR; 
+		TRANSIT(C,RH.TIMER);
+		END;
+	END;
+ 
+
+&***************************************************************
+& COPY_TER: SALVATAGGIO DELLA COPIA DI UNA RISPOSTA NEL TERMINAL
+&***************************************************************
+
+PROCEDURE COPY_TER(C,SOUR,DEST);
+	INTEGER SOUR,DEST;
+	REF CUSTOMER C;
+	REF HOST RH;
+	BEGIN
+	WITH CUSTOMER DO BEGIN
+		RH:= INCLUDING (QUEUE)::HOST;
+		C.DEST_ID:= DEST;
+		C.SOUR_ID:= SOUR; 
+		TIME_ARR(DEST,SOUR):= TIME;
+		RTT(SOUR,DEST):=TIME_ARR(DEST,SOUR)-TIME_PART(SOUR,DEST);
+		TRANSIT(C,RH.HOTE,RISPOSTA);
+		END;
+	END;
+
+&***************************************************************
+& COPY_RIC: SALVATAGGIO DELLA COPIA DI UNA RISPOSTA NEL TERMINAL
+&***************************************************************
+PROCEDURE COPY_RIC(C,SOUR,DEST);
+	INTEGER SOUR,DEST;
+	REF CUSTOMER C;
+	REF HOST RH;
+	BEGIN
+		WITH CUSTOMER DO BEGIN
+			RH:= INCLUDING (QUEUE)::HOST;
+			C.DEST_ID:= DEST;
+			C.SOUR_ID:= SOUR; 
+			TRANSIT(C,RH.HOTE,RICHIN);
+	END;
+	END;
+
+&*******************************************************    
+&  DESCRIZIONE DEL [ PROTOCOLLO IN EMISSIONE ] 
+&*******************************************************
+
+ PROCEDURE PROT_EMI(TEI,TEA);    
+	REAL TEI,TEA;
+	REF HOST RH;
+	BEGIN
+		WITH CUSTOMER DO BEGIN
+		RH:= INCLUDING (QUEUE)::HOST;
+		IF TYP = "ack" THEN  
+			BEGIN
+				EXP(TEA);                         
+				TRANSIT(RH.ACCESS_E);                	 	  
+			END
+		ELSE   
+			BEGIN
+				TYP:="info";
+				EXP(TEI);
+				COPY_P(NEW(CUSTOMER),SOUR_ID,DEST_ID);
+				TRANSIT(RH.ACCESS_E); 
+			END;
+		END;
+	END;
+&******************************************************* 
+&  DESCRIZIONE DEL [ PROTOCOLLO IN RICEZIONE ]
+&*******************************************************
+
+
+ PROCEDURE PROT_REC(TRI,TRA,HOST_ID);
+	REAL TRI,TRA;
+	INTEGER HOST_ID;
+	REF HOST RH;
+	BEGIN
+		WITH CUSTOMER DO BEGIN
+		RH:= INCLUDING (QUEUE)::HOST;
+	IF TYP = "info" THEN
+		BEGIN
+			IF TYPE = "rich" THEN 
+				BEGIN 
+					TYP:="ack";
+					TYPE:="risp";
+					DEST_ID:= SOUR_ID;	
+					SOUR_ID:= HOST_ID;
+					EXP(TRI);
+					COPY_RIC(NEW(CUSTOMER),SOUR_ID,DEST_ID);
+					TRANSIT(RH.PROTOCOL,EMISSION);  
+				END
+			ELSE
+				BEGIN 
+					TYP:="ack";
+					DEST_ID:= SOUR_ID;	
+					SOUR_ID:=HOST_ID;
+					EXP(TRI);
+					COPY_TER(NEW(CUSTOMER),SOUR_ID,DEST_ID);
+					TRANSIT(RH.PROTOCOL,EMISSION);  
+				END;
+		END
+	ELSE  
+		BEGIN
+			EXP(TRA); 
+				IF (HOST.TIMER.FIRST<> NIL)THEN 
+					BEGIN
+					TRANSIT(RH.TIMER.FIRST,OUT);
+					V(RH.WINDOW); 
+					END; 
+				TRANSIT(OUT);  
+			END;
+		END;
+	END;
+
+&*******************************************************    
+&  DESCRIZIONE DEL [ PROTOCOLLO PER WEB APPLICATION] 
+&*******************************************************
+ PROCEDURE PROT_WEB(TEI,TEA);    
+ REAL TEI,TEA;
+ REF HOST RH;
+ BEGIN
+ 	WITH (CUSTOMER::WEBAPP) DO BEGIN
+	RH:= INCLUDING (QUEUE)::HOST;
+ 	IF SOUR_ID=RH.ID THEN 
+	 BEGIN && Si sfrutta il fatto che ogni terminale ha IDT=ID sell'host sottostante per riconoscere che i dati hanno origine locale
+    		IF TYP= "app" THEN BEGIN
+     			EXP(TEI);
+     			RH.WA:= NEW (WEBAPP);
+				RH.WA.TYPE:="web";
+     			RH.WA.TYP:="app";
+     			&& Copia di tutti i dati
+     			RH.WA.AT:=AT;
+     			RH.WA.ACPU:=ACPU;
+     			RH.WA.AD:=AD;
+     			RH.WA.N:=N;
+     			RH.WA.BCPU:=BCPU;
+     			RH.WA.BD:=BD;
+     			RH.WA.OP:=OP;
+				RH.WA.L:=L;
+				RH.WA.WTOUT:=WTOUT;
+				RH.WA.SEQ_N:=SEQ_N; 
+				RH.WA.SOUR_ID:=SOUR_ID;
+				RH.WA.DEST_ID:=DEST_ID;
+				RH.WA.SOUR_NP:=SOUR_NP;&se inverto queste due completa l'applicazione
+				RH.WA.DEST_NP:=DEST_NP;
+	 		&& Copia pronta	
+	 		TRANSIT	(RH.WA,RH.WEBTIMER,WEBAP);
+     		TRANSIT (RH.ACCESS_E);     			
+    		END;
+    END
+   	ELSE && Dati che vengono da remoto
+	BEGIN
+	IF TYP="app" THEN
+		BEGIN	
+				& Si controllo se il numero di sequenze NUMSEQ del pacchetto arrivato è maggiore dell'ultimo memorizzato dal software. Se ci sono state perdite, ovvero il numero NUMSEQ è minore, si butta il pacchetto
+				PRINT ("NUMSEQ: ", SW#(DEST_NP).C_SEQ_N);
+    			IF (SEQ_N >SW#(DEST_NP).C_SEQ_N)THEN
+    				BEGIN
+					& andiamo sul buffer WEBTIMER (coda che nel caso si superi il tempo WTOUT invia il pacchetto sulla coda PROTOCOL)
+					& scrollendolo tutto con un while, e, se non si tratta della stessa applicazione(caso attuale), si punta all'ultimo elemento di WEBTIMER
+					RH.WA:=(RH.WEBTIMER.FIRST)::WEBAPP;
+    				WHILE (RH.WA<>NIL) DO BEGIN
+    					IF DEST_NP=RH.WA.SOUR_NP THEN BEGIN  & Si identifica che si tratta della stessa applicazione
+    						V(RH.WINDOW);
+    						IF (RH.WA.NEXT=NIL) THEN BEGIN 
+    								TRANSIT (RH.WA,OUT);
+    								RH.WA:=NIL;
+    							END
+    						ELSE BEGIN 
+    						RH.WA:=(RH.WA.NEXT)::WEBAPP;
+    							TRANSIT (RH.WA.PREVIOUS,OUT);
+    							END;
+   						END
+    					ELSE RH.WA:=(RH.WA.NEXT)::WEBAPP;
+					END;					
+					EXP(TEA);
+    		 		RH.WA:=NEW (WEBAPP);
+    		 		RH.WA.SOUR_ID:=DEST_ID;
+    		 		RH.WA.DEST_ID:=SOUR_ID;
+    		 		RH.WA.DEST_NP:=SOUR_NP;
+    		 		RH.WA.SOUR_NP:=DEST_NP;
+    		 		RH.WA.N:=3; && Dimensione prefissata per gli ack
+					RH.WA.TYPE:="ack";
+					RH.WA.ACPU:=10;
+					RH.WA.AD:=10;
+					RH.WA.AT:=10;
+					RH.WA.BCPU:=10;
+					RH.WA.BD:=10;
+    		 		RH.WA.SEQ_N:=SEQ_N;
+    		 		RH.WA.TYP:="ack"; && anche gli ack devono avere seq_n per essere riconosciuti
+					 & si manda sulla coda ACCESS_E con classe WEBAP
+    		 		TRANSIT (RH.WA,RH.ACCESS_E,WEBAP); && Invio dell'ack
+					SW#(DEST_NP).C_SEQ_N:=SEQ_N;
+					PRINT ("NUMSEQ: ", SW#(DEST_NP).C_SEQ_N);
+					& il pacchetto normale va invece mandato sul puntatore HOTE, ovvero la coda HQ della linea
+					TRANSIT (RH.HOTE);
+    		 	END
+				ELSE
+    			BEGIN
+				PRINT("HO BUTTATO VIA UN PACCHETTO RITRASMESSO ", N);
+				TRANSIT (OUT);
+				END;
+		END;
+    	IF (TYP = "ack") THEN BEGIN
+    			IF (SW#(DEST_NP).C_SEQ_N>SEQ_N)THEN TRANSIT (OUT) && Ack vecchio
+    			ELSE BEGIN& L'ack non inverte porta PROGRAM e destinazione, lavorando solo a livello host
+						RH.WA:=(RH.WEBTIMER.FIRST)::WEBAPP;
+    					WHILE (RH.WA<>NIL) DO 
+							BEGIN 
+							IF DEST_NP=RH.WA.SOUR_NP THEN BEGIN  & Si identifica che si tratta della stessa applicazione
+								V(RH.WINDOW);
+								IF (RH.WA.NEXT=NIL) THEN BEGIN 
+    									TRANSIT (RH.WA,OUT);
+    									RH.WA:=NIL;
+    									END
+								ELSE BEGIN 
+									RH.WA:=(RH.WA.NEXT)::WEBAPP;
+									TRANSIT (RH.WA.PREVIOUS,OUT);
+    								END;
+									
+    							END
+							ELSE 
+								RH.WA:=(RH.WA.NEXT)::WEBAPP;
+							END;
+						END;
+    			TRANSIT (OUT);
+    	END;
+	END;
+END;
+END;
+   	
+    	
+&*******************************************************
+&  TRASMISSIONE FISICA DELL' INFORMAZIONE 
+&*******************************************************
+
+ PROCEDURE ACC_EMI(LENGTH_I,LENGTH_A,LENGTH_W);
+	INTEGER LENGTH_I,LENGTH_A,LENGTH_W,LENGTH;
+	BEGIN
+		IF TYPE="web" THEN 
+			LENGTH:=LENGTH_W
+		ELSE 
+			IF TYP = "ack" THEN 
+				LENGTH:= LENGTH_A
+			ELSE 
+				LENGTH:= LENGTH_I;        
+				EXP((LENGTH*8)/LINE_CAP);					    
+	END;
+
+&*******************************************************
+&  RICEZIONE FISICA DELL' INFORMAZIONE 
+&*******************************************************
+	
+ PROCEDURE ACC_REC(RLENGTHI,RLENGTHA,RLENGTHW);
+	INTEGER RLENGTHI,RLENGTHA,RLENGTHW,LLENGTH;
+	BEGIN
+	IF TYPE="web" THEN 
+		LLENGTH:=RLENGTHW
+	ELSE 
+		IF TYP = "info" THEN
+			LLENGTH:= RLENGTHI 
+		ELSE 
+			LLENGTH:= RLENGTHA;
+			EXP((LLENGTH*8)/REC_CAP);					     
+	END;
+
+ 

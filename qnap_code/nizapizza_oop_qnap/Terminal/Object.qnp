@@ -1,0 +1,42 @@
+
+&******************************************************************
+& DEFINIZIONE DELL' OGGETTO TERMINAL
+&******************************************************************
+OBJECT TERMINAL (IDT);
+
+	& UTENTE : Sorgente che produce i pacchetti per il traffico standard e li invia nella coda CPU del terminal, nel caso in cui il terminal non è coinvolto nella simulazione. Altrimenti questa coda viene bloccata con l’istruzione CST(T_MAX) dove T_MAX è il tempo totale di simulazione.
+	& ACCESS_H : Coda che riceve i pacchetti dall’host e li manda nella coda SCH del terminal, inoltre fa cambiare il lato dell’applicazione, passando da client a server a seconda dei casi.
+	& CPU : Coda che simula il ritardo dovuto alle operazioni che la CPU deve svolgere, infine rimanda i pacchetti nella coda SCH del terminal.
+	& DISK : Coda che simula il ritardo dovuto agli accessi a disco necessari all’applicazione e poi manda i pacchetti nella coda SCH del terminal.
+     QUEUE UTENTE, ACCESS_H, CPU, DISK;
+
+	 & SCH : Attiva solo nei terminal che simulano applicazioni, questa coda gestisce tutte le operazioni attraverso la variabile OP. La variabile OP esegue determinate operazione a seconda del valore che assume e del lato dell’applicazione, per esempio muove i pacchetti nelle varie code CPU, DISK e TERM.Questa coda si occupa anche della trasmissione dei pacchetti alla coda servizio del software e alla coda qh della linea th, tramite il puntatore PORTA.
+	
+	& TERM: Coda che simula il ritardo dell’applicazione dovuto all’interazione con l’utente e poi manda i pacchetti nella coda SCH del terminal.
+     QUEUE SCH,TERM; && Code attive solo per i webterm
+     
+	 & Indica se la sorgente UTENTE è attiva oppure no, ovvero se si devono gestire pacchetti di traffico standard oppure no.
+	 BOOLEAN ACTIVES;
+     
+	 & Identificativo del terminal.
+	 INTEGER IDT;
+     
+	 & Identificativo dell’host a cui il terminal è collegato.
+	 INTEGER ID_H;
+
+	 & cui il terminal è collegato.
+     STRING NAME;
+
+	 & Lunghezza di una richiesta per la CPU o per il disco in un terminal che simula traffico standard.
+	 INTEGER REQLENGHT;
+     
+	 & Process Tempo necessario alla CPU per eseguire un’operazione.
+	 & PROC_D Tempo necessario al disco per eseguire un accesso.
+	 REAL PROCESS, PROC_D;
+
+	 & Pacchetto generato dalla coda UTENTE.
+     REF REQUEST RQ;
+	 & Riferimento alla coda qh dell’oggetto LINE_TH.
+     REF QUEUE PORTA;
+END;
+     

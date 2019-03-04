@@ -1,0 +1,122 @@
+/STATION/
+   NAME=*SOFTWARE.SERVIZIO;
+   SERVICE (WEBAP) = BEGIN
+			PRINT("SOFTWARE.SERVZIO_WEBAPP");
+			IF (IDS=0) THEN 
+				BEGIN
+				PRINT("QUI CI ARRIVO BENE");
+				IF (HOSTS#(TERM#(SW#(2).EXIT).ID_H).SSO=1) THEN BEGIN 
+					PRINT ("CASO IN CUI IL SERVER E' IL SERVER SSO"); 
+					
+				END
+				ELSE
+				BEGIN
+					EXP(20);
+					&&IL SERVER CERCA SULLA RETE IL SERVER SSO
+					PRINT("QUI CI ARRIVO BENE2");
+					WITH (CUSTOMER::WEBAPP) DO BEGIN
+					PRINT("QUI CI ARRIVO BENE3");
+					OP:=1;
+						IF (L=1) THEN OP:=12;
+						TYPE:="risweb";
+						RUNTIME:=TIME;
+				        BUF:=SOUR_ID;
+				        SOUR_ID:=DEST_ID;
+				        DEST_ID:=BUF;
+				        BUF:=SOUR_NP;
+				        SOUR_NP:=DEST_NP;
+				        DEST_NP:=BUF;
+						PRINT("DEST_NO=", DEST_NP);
+						&APPDESTID:=DEST_ID;
+						&APPDESTNP:=DEST_NP;
+						&DEST_ID:=11;
+						&DEST_NP:=3;
+						PRINT("QUI ASSEGNO A DEST_NP", DEST_NP);
+						ACPU:=GET(FA,INTEGER);
+			          	IF (ACPU=-1)THEN BEGIN && fine applicazione
+							PRINT ("FINE APPLICAZIONE");
+				       		RUNTIME:=TIME;
+				       		TRANSIT(OUT); 
+				       	END;
+			           	AD:=GET(FA,INTEGER);
+			           	AT:=GET(FA,INTEGER);	
+			           	N:=GET(FA,INTEGER);
+			           	IF (N=0) THEN PRINT ("ERROR: I dati non sono consistenti");
+			           	BCPU:=GET(FA,INTEGER);
+			          	BD:=GET(FA,INTEGER);
+		            	NewLn(FA);
+						SEQ_N:=SEQ_N+1;
+					END;
+				END;
+				TRANSIT(TERM#(EXIT).SCH);
+			END
+			ELSE
+			BEGIN
+				PRINT ("SALVA COOKIE");
+				TRANSIT(OUT);
+			END;
+	END;
+SERVICE(AUTHO)= BEGIN
+			IF (IDS=0) THEN BEGIN
+				   && SE IL SERVER DEL SERVIZIO RICEVE UN PACCHETTO IN CLASSE AUTHO ALLORA IL CLIENT E' AUTENTICATOE PROCEDE ALL'EROGAZIONE DEL SERVIZIO
+				EXP(20);
+				WITH (CUSTOMER::WEBAPP) DO BEGIN
+					OP:=1;
+					IF (L=1) THEN OP:=12;
+					TYPE:="risweb";
+					RUNTIME:=TIME;
+	               	BUF:=SOUR_ID;
+	               	SOUR_ID:=DEST_ID;
+	               	DEST_ID:=BUF;
+	               	BUF:=SOUR_NP;
+	               	SOUR_NP:=DEST_NP;
+	               	DEST_NP:=BUF;
+					ACPU:=GET(FA,INTEGER);
+	               	IF (ACPU=-1)THEN BEGIN && fine applicazione
+	               		PRINT ("FINE APPLICAZIONE");
+	               		RUNTIME:=TIME;
+	               		TRANSIT(OUT); 
+	               	END;
+	               	AD:=GET(FA,INTEGER);
+	               	AT:=GET(FA,INTEGER);	
+	               	N:=GET(FA,INTEGER);
+	               	IF (N=0) THEN PRINT ("ERROR: I dati non sono consistenti");
+	               	BCPU:=GET(FA,INTEGER);
+	               	BD:=GET(FA,INTEGER);
+	               	NewLn(FA);
+	               	SEQ_N:=SEQ_N+1;
+				END;
+			END
+			ELSE BEGIN
+			    &&IL CLIENT RICEVE UN PACCHETTO IN CLASSE AUTHO E QUINDI CONTINUA LA COMUNICAZIONE COME DA FILE
+			    EXP(20);
+				WITH (CUSTOMER::WEBAPP) DO BEGIN
+					OP:=1;
+					IF (L=1) THEN OP:=12;
+					TYPE:="risweb";
+					RUNTIME:=TIME;
+               		BUF:=SOUR_ID;
+               		SOUR_ID:=DEST_ID;
+               		DEST_ID:=BUF;
+               		BUF:=SOUR_NP;
+               		SOUR_NP:=DEST_NP;
+               		DEST_NP:=BUF;
+					ACPU:=GET(FA,INTEGER);
+               		IF (ACPU=-1)THEN BEGIN && fine applicazione
+               			PRINT ("FINE APPLICAZIONE");
+               			RUNTIME:=TIME;
+               			TRANSIT(OUT); 
+               		END;
+               		AD:=GET(FA,INTEGER);
+               		AT:=GET(FA,INTEGER);	
+               		N:=GET(FA,INTEGER);
+               		IF (N=0) THEN PRINT ("ERROR: I dati non sono consistenti");
+               		BCPU:=GET(FA,INTEGER);
+               		BD:=GET(FA,INTEGER);
+               		NewLn(FA);
+               		SEQ_N:=SEQ_N+1;
+				END;
+				COOKIE#(TERM#(SW#(IDS).EXIT).ID_H):=1; &&Se un client riceve un auth setta ad uno il cookie, c'è da vedere come si può controllare che il numero di sequenza sia successivo al precedente, in modo che, guardando i numeri di sequenza, se poi riceve un webapp capisce che il cookie è scaduto
+			END;
+		TRANSIT(TERM#(EXIT).SCH);
+	END;

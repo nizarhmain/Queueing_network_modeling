@@ -1,0 +1,13 @@
+&
+&********************************
+& CREAZIONE DELLA LIBRERIA DI OGGETTI
+&********************************
+
+ /DECLARE/ FILE F;
+ /EXEC/ BEGIN
+	FILASSIGN(F,"LIB.lis");
+	OPEN(F,2);
+	SAVE(F,"OGGETTI");
+	END;
+ /END/
+

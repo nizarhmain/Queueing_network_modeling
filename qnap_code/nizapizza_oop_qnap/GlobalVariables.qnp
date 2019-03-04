@@ -1,0 +1,68 @@
+&*****************************
+& Oggetti.qnp 
+&*****************************
+&
+/DECLARE/
+
+&***************
+&VARIABILI GLOBALI
+&***************
+ INTEGER SCAMBIO;
+ INTEGER NH = 100;                   	 
+ INTEGER NR = 50;
+ INTEGER NV = 200;
+ INTEGER NW = 50;
+ INTEGER COUNT;
+ INTEGER NHTEST;
+ INTEGER NRTEST;
+ INTEGER NVTEST;
+ INTEGER NSOFTW;
+ INTEGER J,I;
+ INTEGER NPVAL;
+ INTEGER EXITSERVER;
+ INTEGER ISOPEN; &Servirebbe a stabilire se il file � aperto o chiuso e questo servirebbe a concludere l'applicazione
+ INTEGER APP;
+  
+ REAL TEMPO;
+ REAL T_MAX;                 
+ REAL PERIODO;     
+        
+ CLASS EMISSION,RECEPT;  
+ CLASS RICHIN,RISPOSTA; 
+ CLASS BOOT,WEBAP; & Classi aggiunte che rappresenatno le web application 
+ REAL LINE_CAP;                  
+ REAL REC_CAP;
+ REAL CAP_BUF;                  
+ INTEGER DEST, LUNGH;
+ 
+ REAL TIME_ARR(NH,NH);  
+ REAL TIME_PART(NH,NH); 
+ REAL RTT(NH,NH);
+ 
+ 
+&*****************
+& ARRAY DI PUNTATORI
+&*****************
+INTEGER COOKIE#(NH);
+REF HOST HOSTS#(NH);
+REF LINE_HR LINE_HR#(NH);
+REF ROUTER ROUTER#(NR);
+REF VIA VIA#(NV);
+REF TERMINAL TERM#(NH);
+REF SOFTWARE SW#(NH); & Array di oggetti software
+REF LINE_TH LINE_TH#(NH);
+
+& ***************************************
+& DEFINIZIONE DEI CUSTOMERS
+&****************************************
+
+ & TYP : sottotipo del pacchetto
+ & TYPE : tipo del pacchetto
+ CUSTOMER STRING TYP, TYPE; 
+
+ & SOUR_ID ID dell'host sorgente
+ & DEST_ID dell'host di destinazione                       	
+ CUSTOMER INTEGER SOUR_ID,DEST_ID;
+
+ & Riferimento al customer e usato in alcune procedure.
+ REF CUSTOMER C; 

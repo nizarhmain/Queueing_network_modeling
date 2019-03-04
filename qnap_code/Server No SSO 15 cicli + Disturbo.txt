@@ -1,0 +1,1958 @@
+ 
+  SIMULOG   ***  QNAP2  ***  ( 15-09-2000  ) V 9.4   
+  (C)  COPYRIGHT BY CII HONEYWELL BULL AND INRIA, 1986
+ 
+ 
+      1 &*****************************
+      2 & Simulatore.qnp
+      3 &*****************************
+      4  
+      5 &  RESTORE DEL FILE DI OGGETTI
+      6  
+      7 /DECLARE/ FILE F;
+      8 /EXEC/ BEGIN
+      9 	FILASSIGN(F,"LIB.lis");
+     10 	OPEN(F,1);
+     11 	RESTORE(F,"OGGETTI");
+     12 	END;
+... MODEL RESTORED : OGGETTI
+ (0J0H01)                     ... SKIP TO NEXT COMMAND
+    957  
+    958 & PROCEDURA NewLine
+    959  
+    960 /DECLARE/
+    961     PROCEDURE NewLine;
+    962     STRING S;
+    963     BEGIN
+    964 	S:=GETLN(STRING,2);
+    965 	IF INDEX(S,";")=0 THEN BEGIN
+    966 	WRITELN(" (!); not found:[",S,"]");
+    967 	ABORT;
+    968      END;
+    969     END;
+    970  
+    971 & PROCEDURA BuildMod
+    972  
+    973    PROCEDURE BuildMod;
+    974    INTEGER N_Hosts,N_Router,N_Vie,N_soft,idh,idr,idv,I,J,K,idter,idhost;
+    975  
+    976    BEGIN
+    977  
+    978 & VARIABILI GLOBALI
+    979  
+    980 		N_Hosts := GET(INTEGER);
+    981 		N_Router:= GET(INTEGER);
+    982 		N_Vie:=GET(INTEGER);
+    983 	    N_soft:=GET(INTEGER);
+    984 	
+    985 	    NHTEST:= N_Hosts;
+    986 	    NRTEST:=N_Router;
+    987 	    NVTEST:=N_Vie;
+    988 	    NSOFTW:=N_soft;
+    989 	
+    990 	    LINE_CAP:=GET(REAL);
+    991 	    REC_CAP:= GET(REAL);
+    992 	    CAP_BUF:= GET(REAL);
+    993 	    NewLine;
+    994 	    T_MAX:=GET(REAL);
+    995 	    TEMPO := GET(REAL);
+    996 	    PERIODO:=GET(REAL);
+    997 	    NewLine;
+    998  
+    999 & GENERAZIONE ROUTERS
+   1000  
+   1001 	  IF (N_Router > 0) THEN
+   1002 	       FOR I:=1 STEP 1 UNTIL N_Router DO BEGIN
+   1003 	       idr :=GET(INTEGER);
+   1004 	       ROUTER#(idr):=NEW(ROUTER,idr,GET(INTEGER));
+   1005 	       WITH ROUTER#(idr) DO BEGIN
+   1006 	       ROUTER#(idr).RATE := GET(REAL);
+   1007 	       ROUTER#(idr).P_ERR := GET(REAL);
+   1008 	       END;
+   1009 	 NewLine;
+   1010  END;
+   1011  
+   1012 & GENERAZIONE VIE E CONNESSIONI A ROUTER DI USCITA
+   1013  
+   1014  IF (N_Vie > 0) THEN
+   1015    FOR I:=1 STEP 1 UNTIL N_Vie DO BEGIN
+   1016    idv :=GET(INTEGER);
+   1017    VIA#(idv):=NEW(VIA,idv,GET(REAL));
+   1018       WITH VIA#(idv) DO BEGIN
+   1019       idr:=GET(INTEGER);
+   1020       NEXT_R:=ROUTER#(idr).CPU;
+   1021       END;
+   1022  NewLine;
+   1023  END;
+   1024  
+   1025 & ISTRADAMENTI ROUTER->ROUTER
+   1026  
+   1027     FOR I:=1 STEP 1 UNTIL N_Router DO BEGIN
+   1028     idr:=GET(INTEGER);
+   1029 	WITH ROUTER#(idr) DO BEGIN
+   1030 	     FOR J:=1 STEP 1 UNTIL N DO BEGIN
+   1031 	 	K:=GET(INTEGER);
+   1032 		INSTR(J):=VIA#(K).CANALE;
+   1033 		PROB(J):=GET(REAL);
+   1034 		END;
+   1035                 END;
+   1036 	NewLine;
+   1037     END;
+   1038  
+   1039 & GENERAZIONE HOSTS E LINE_HR
+   1040  
+   1041    IF (N_Hosts > 0) THEN
+   1042    FOR I:=1 STEP 1 UNTIL N_Hosts DO BEGIN
+   1043         idh:=GET(INTEGER);
+   1044         HOSTS#(idh):=NEW(HOST,idh);
+   1045         WITH HOSTS#(idh) DO BEGIN
+   1046  
+   1047 	   HOSTS#(idh).T_EMI_I := GET(REAL);
+   1048 	   HOSTS#(idh).T_EMI_A := GET(REAL);
+   1049 	   HOSTS#(idh).T_REC_I := GET(REAL);
+   1050 	   HOSTS#(idh).T_REC_A := GET(REAL);
+   1051 	   HOSTS#(idh).TIME_OUT := GET(REAL);
+   1052 	   HOSTS#(idh).WIN_SIZE := GET(INTEGER);
+   1053 	   HOSTS#(idh).LI := GET(INTEGER);
+   1054 	   HOSTS#(idh).SSO := GET(INTEGER);
+   1055 	   HOSTS#(idh).LA := GET(INTEGER);
+   1056 	   END;
+   1057  
+   1058 	LINE_HR#(idh):=NEW(LINE_HR,GET(REAL));
+   1059  
+   1060 & CONNESSIONI ROUTER-HOST
+   1061  
+   1062     idr:=GET(INTEGER);
+   1063     HOSTS#(idh).ID_R := idr;
+   1064     ROUTER#(idr).S(idh):=HOSTS#(idh).ACCESS_R;
+   1065     NewLine;
+   1066     END;
+   1067  
+   1068 & CONNESSIONI HOST-ROUTER
+   1069  
+   1070       IF (N_Hosts > 0) THEN
+   1071       FOR I:=1 STEP 1 UNTIL N_Hosts DO BEGIN
+   1072 	   HOSTS#(I).NETWORK:=LINE_HR#(I).R;
+   1073 	
+   1074          LINE_HR#(I).ROUT:=ROUTER#(HOSTS#(I).ID_R).CPU;
+   1075 	 END;
+   1076  
+   1077  
+   1078 &--------------------------------------------------
+   1079 & COSTRUZIONE TERMINALE E CONNESSIONI TERMINAL-HOST
+   1080 &--------------------------------------------------
+   1081  
+   1082 IF (N_Hosts > 0) THEN
+   1083 FOR I:=1 STEP 1 UNTIL N_Hosts DO
+   1084 BEGIN
+   1085   	idter := GET(INTEGER);
+   1086 	TERM#(idter):=NEW(TERMINAL,idter);
+   1087      	WITH TERM#(idter) DO BEGIN
+   1088            TERM#(idter).ACTIVES := GET(BOOLEAN);
+   1089            TERM#(idter).NAME := GET(STRING);
+   1090 	   PRINT ("GEN",TERM#(idter).ACTIVES, TERM#(idter).NAME);
+   1091 	   TERM#(idter).REQLENGHT := GET(INTEGER);
+   1092            TERM#(idter).PROCESS := GET(REAL);
+   1093 	   TERM#(idter).PROC_D := GET(REAL);
+   1094      	END;
+   1095         LINE_TH#(idter):=NEW(LINE_TH,GET(REAL));
+   1096 	
+   1097 & CONNESSIONI HOST-TERMINAL
+   1098  
+   1099 	 idhost:=GET(INTEGER);
+   1100 	 TERM#(idter).ID_H := idhost;
+   1101          HOSTS#(idhost).HOTE:=LINE_TH#(idter).HQ;
+   1102 	 LINE_TH#(idter).TIN:=TERM#(idter).ACCESS_H;
+   1103          NewLine;
+   1104 	END;
+   1105  
+   1106  
+   1107 & CONNESSIONI TERMINAL-HOST
+   1108  
+   1109         IF (N_Hosts > 0) THEN
+   1110         FOR I:=1 STEP 1 UNTIL N_Hosts DO BEGIN
+   1111 	   TERM#(I).PORTA:=LINE_TH#(I).QH;
+   1112 	   LINE_TH#(I).TOUT:=HOSTS#(TERM#(I).ID_H).USER;
+   1113 END;
+   1114  
+   1115 &--------------------------------------------------
+   1116 & COSTRUZIONE ARRY SOFTWARE
+   1117 &--------------------------------------------------
+   1118  IF (N_soft > 0) THEN
+   1119   FOR I:=1 STEP 1 UNTIL (N_soft) DO BEGIN
+   1120   	SW#(I):=NEW (SOFTWARE);
+   1121   	SW#(I).IDS:=GET(INTEGER);
+   1122   	SW#(I).EXIT:=GET(INTEGER);
+   1123   	IF (SW#(I).IDS<>0) THEN BEGIN
+   1124   		SW#(I).FA:= NEW (FILE);
+   1125   		FILASSIGN(SW#(I).FA,GET(STRING));
+   1126   		END
+   1127   	ELSE
+   1128 		IF(HOSTS#(SW#(I).EXIT).SSO=1)THEN BEGIN
+   1129   		SW#(I).FA:= NEW (FILE);
+   1130   		FILASSIGN(SW#(I).FA,GET(STRING));
+   1131   		END
+   1132 		ELSE
+   1133   		SW#(I).FA:= SW#(GET(INTEGER)).FA;
+   1134   	NewLine;
+   1135   	END;
+   1136  
+   1137  
+   1138 &-------------
+   1139         END;
+   1140  
+   1141 & LETTURA MODELLO DA FILE
+   1142  
+   1143 /DECLARE/ FILE H;
+   1144 /EXEC/ BEGIN
+   1145 	  FILASSIGN(H,"model.dat");
+   1146 	  OPEN(H,1);
+   1147              END;
+   1148  
+   1149 /CONTROL/ UNIT = GET(H);
+   1150 /EXEC/ BEGIN
+   1151            BuildMod;
+   1152            CLOSE(H);
+   1153            END;
+      1 & VARIABILI GLOBALI
+      2   &Numero Hosts  Numero Router Numero Vie Numero Software   Capacità Emi
+ssione     Capacità Ricezione     Capacità Buffe
+      3          16            8          17       4                   128.0    
+           256.0                  400.0 ;
+      4 & SIMULAZIONE
+      5 & TMAX     TEMPO RQ    PERIOD
+      6  500000.0   120.0      1000.0;
+      7 & ROUTERS
+      8   &   ID   Uscite  Rate  P_Err
+      9        1      1   100.0  0.001;
+     10        2      3   123.0  0.001;
+     11        3      1   111.0  0.001;
+     12        4      2   122.0  0.001;
+     13        5      5   100.0  0.001;
+     14        6      2   123.0  0.001;
+     15        7      1   111.0  0.001;
+     16        8      2    50.0  0.001;
+     17 & VIE
+     18 & ID        Tempo Propag    Router Dest
+     19    1            32.0           1;
+     20    2            32.0           2;
+     21    3            54.0           4;
+     22    4            34.0           5;
+     23    5            11.7           4;
+     24    6            22.0           8;
+     25    7            22.0           4;
+     26    8            12.4           8;
+     27    9            21.0           6;
+     28   10            10.5           6;
+     29   11            10.5           5;
+     30   12            20.0           7;
+     31   13            20.0           6;
+     32   14            11.0           3;
+     33   15            11.0           5;
+     34   16            32.0           3;
+     35   17            54.0           2;
+     36 & ISTRADAMENTI ROUTER
+     37      &Router_ID     Via IstrProb  Via Istr Prob Via IstrProb Via IstrPro
+b Via IstrProb
+     38              1       2   1.0;
+     39              2       1   0.4       3   0.3      16  0.3;
+     40              3      15   1.0;
+     41              4       4   0.6       6   0.4;
+     42              5       5   0.2       8   0.1      10  0.2      14     0.2 
+  17  0.3;
+     43              6      11   0.6      12   0.4;
+     44              7      13   1.0;
+     45              8       7   0.5       9   0.5;
+     46 & HOSTS
+     47  & ID      TEI     TEA   TRI    TRA     TIME_OUT WIN_SIZ LI SSO LA   Lin
+eHR Router
+     48       1    12.1    1.0   4.3    1.1       800.0     10   55  0  1   12.0
+    1;
+     49       2    12.0    2.0   4.6    1.2       804.0     11   55  0  1   13.0
+    1;
+     50       3    13.0    1.5   6.4    1.3       780.0     12   55  0  2   12.6
+    1;
+     51       4    15.0    1.0   5.0    1.8       800.0     20   55  0  2   10.0
+    1;
+     52       5    12.0    1.0   4.3    1.1       803.0     12   55  0  1   11.0
+    4;
+     53       6    12.3    2.0   5.2    1.2       803.0     12   55  0  1   12.0
+    4;
+     54       7    13.0    1.5   5.0    1.3       803.2     14   55  0  2   13.0
+    4;
+     55       8    14.0    1.8   4.1    1.5       802.4     12   55  0  1   15.0
+    8;
+     56       9    13.0    0.6   5.0    1.1       802.0     13   55  0  1   12.0
+    8;
+     57      10    13.7    0.8   6.0    1.2       803.0     14   55  0  2   10.3
+    7;
+     58      11    12.5    0.9   3.0    1.6       780.0     15   55  0  1   9.6 
+    6;
+     59      12    11.3    1.1   2.5    1.9       801.0     13   55  0  2   8.5 
+    6;
+     60      13    10.7    1.0   2.9    2.0       789.0     12   55  0  1   13.0
+    5;
+     61      14    11.9    2.0   2.5    1.0       803.0     11   55  0  2   11.3
+    3;
+     62      15    12.5    0.8   2.4    1.3       804.2     10   55  0  1   12.2
+    3;
+     63      16    13.0    0.9   3.0    1.7       805.1     15   55  0  2   14.7
+    2;
+     64  
+     65  
+     66 & Terminal
+     67 &IDT Actives Name   Lenght Tempo CPU Tempo Disk Line TH  IDH
+     68 1    TRUE    "T1"    120    0.0045      0.015    1.20     1;
+ GENTRUET1
+     69 2    TRUE    "T2"    123    0.0045      0.015    1.30     2;
+ GENTRUET2
+     70 3    TRUE    "T3"    124    0.0045      0.015    1.26     3;
+ GENTRUET3
+     71 4    TRUE    "T4"    135    0.0045      0.015    1.00     4;
+ GENTRUET4
+     72 5    TRUE    "T5"    120    0.0045      0.015    1.10     5;
+ GENTRUET5
+     73 6    TRUE    "T6"    123    0.0045      0.015    1.20     6;
+ GENTRUET6
+     74 7    TRUE    "T7"    201    0.0045      0.015    1.30     7;
+ GENTRUET7
+     75 8    FALSE   "T8"    204    0.0045      0.015    1.50     8;
+ GENFALSET8
+     76 9    TRUE    "T9"    112    0.0045      0.015    1.20     9;
+ GENTRUET9
+     77 10   TRUE    "T10"   180    0.0045      0.015    1.03    10;
+ GENTRUET10
+     78 11   TRUE    "T11"   110    0.0045      0.015    0.96    11;
+ GENTRUET11
+     79 12   FALSE   "T12"   112    0.0045      0.015    0.85    12;
+ GENFALSET12
+     80 13   TRUE    "T13"   302    0.0045      0.015    1.30    13;
+ GENTRUET13
+     81 14   TRUE    "T14"   145    0.0045      0.015    1.13    14;
+ GENTRUET14
+     82 15   TRUE    "T15"   143    0.0045      0.015    1.22    15;
+ GENTRUET15
+     83 16   TRUE   "T16"   100    0.0045      0.015    1.47    16;
+ GENTRUET16
+     84 & Web Application
+     85 &IDS   exit     File
+     86  1   8   	"server.app";
+     87  0   12         1;
+     88  0   13    		1;
+     89  0   10         1;
+   1154  
+   1155 & INIZIALIZZAZIONE DEI FILE *.STS
+   1156  
+   1157 /DECLARE/ FILE HOS,ROT,LIN,TER,ROUND,RES;
+   1158           INTEGER IH,IR,IL;
+   1159  
+   1160 /EXEC/ BEGIN
+   1161 	  FILASSIGN(HOS,"Hosts.sts");
+   1162 	  FILASSIGN(ROT,"Routers.sts");
+   1163 	  FILASSIGN(LIN,"Lines.sts");
+   1164 	  FILASSIGN(TER,"Terminals.sts");
+   1165           FILASSIGN(ROUND,"RTT.sts");
+   1166           FILASSIGN(RES,"RES.sts");
+   1167           OPEN(TER,2);
+   1168 	  OPEN(HOS,2);
+   1169 	  OPEN(ROT,2);
+   1170 	  OPEN(LIN,2);
+   1171           OPEN(ROUND,2);
+   1172           OPEN(RES,2);
+   1173                  FOR IH:=1 STEP 1 UNTIL NHTEST DO BEGIN
+   1174 	         WRITE(HOS,"HOST",IH);
+   1175                  WRITE(HOS," ");
+   1176 	 END;
+   1177 	 WRITELN(HOS);
+   1178 	
+   1179                  FOR IR:=1 STEP 1 UNTIL NRTEST DO BEGIN
+   1180 	 WRITE(ROT,"ROUTER",IR);
+   1181                  WRITE(ROT," ");
+   1182 	 END;
+   1183 	 WRITELN(ROT);
+   1184  
+   1185                  FOR IL:=1 STEP 1 UNTIL NVTEST DO BEGIN
+   1186 	 WRITE(LIN,"VIA",IL);
+   1187                  WRITE(LIN," ");
+   1188 	 END;
+   1189 	 WRITELN(LIN);
+   1190 	
+   1191     END;
+   1192  
+   1193  
+   1194 /DECLARE/
+   1195 PROCEDURE NETTEST;
+   1196 INTEGER I,J;
+   1197 INTEGER FLAG;
+   1198  
+   1199 BEGIN
+   1200                   FOR I:=1 STEP 1 UNTIL NHTEST DO BEGIN
+   1201                   WRITE(HOS,HOSTS#(I).USER.NBOUT);
+   1202 	          WRITE(HOS," ");
+   1203                   END;
+   1204                   WRITELN(HOS);
+   1205  
+   1206                   FOR I:=1 STEP 1 UNTIL NRTEST DO BEGIN
+   1207                   WRITE(ROT,ROUTER#(I).CPU.NBOUT);
+   1208 	  WRITE(ROT," ");
+   1209                   END;
+   1210                   WRITELN(ROT);
+   1211  
+   1212                   FOR I:=1 STEP 1 UNTIL NVTEST DO BEGIN
+   1213                   WRITE(LIN,VIA#(I).CANALE.NBOUT);
+   1214                   WRITE(LIN," ");
+   1215 	  END;
+   1216                   WRITELN(LIN);
+   1217  
+   1218  
+   1219          WRITELN(TER,"*************************************");
+   1220          WRITELN(TER,"      Tempo di simulazione:",TIME);
+   1221          WRITELN(TER,"*************************************");
+   1222           FOR I:=1 STEP 1 UNTIL NHTEST DO BEGIN
+   1223                  WRITELN(TER,"-------------------------------------");
+   1224 	         WRITELN(TER,"             TERMINAL ",I);
+   1225                  WRITELN(TER,"-------------------------------------");
+   1226                  WRITE(TER,"RICHIESTE EMESSE: ");
+   1227                   WRITELN(TER,TERM#(I).DISK.NBOUT(EMISSION));
+   1228                   WRITE(TER,"RICHIESTE RICEVUTE: ");
+   1229                   WRITELN(TER,TERM#(I).DISK.NBOUT(RICHIN));
+   1230                    WRITE(TER,"RISPOSTE RICEVUTE:");
+   1231                   WRITELN(TER,TERM#(I).DISK.NBOUT(RISPOSTA));
+   1232                     WRITE(TER,"TOTALE: ");
+   1233                   WRITELN(TER,TERM#(I).DISK.NBOUT);
+   1234                  WRITELN(TER);
+   1235 	  END;
+   1236                   WRITELN(TER);
+   1237  
+   1238 	 WRITELN(ROUND,"*************************************");
+   1239          WRITELN(ROUND,"      Tempo di simulazione:",TIME);
+   1240          WRITELN(ROUND,"*************************************");
+   1241          FOR I:=1 STEP 1 UNTIL NHTEST DO BEGIN
+   1242              WRITE(ROUND,"SORGENTE:",I);
+   1243              FOR J:=1 STEP 1 UNTIL NHTEST DO BEGIN
+   1244                 IF (RTT(I,J)<>0) THEN
+   1245                 BEGIN
+   1246                    FLAG:=1
+   1247                    WRITELN(ROUND);
+                                 |
+ (050103)  ==>WARNING (COMPILE) : ";" HAS BEEN ADDED BEFORE THIS ELEMENT
+   1248                    WRITE(ROUND," DESTINAZIONE: ",J);
+   1249                    WRITE(ROUND," RTT: ",RTT(I,J));
+   1250                    WRITELN(ROUND," ");
+   1251                 END
+   1252              END;
+                       |
+ (050103)  ==>WARNING (COMPILE) : ";" HAS BEEN ADDED BEFORE THIS ELEMENT
+   1253                   IF (FLAG = 0) THEN WRITELN(ROUND," NESSUNA RICHIESTA I
+NVIATA ");
+   1254                   FLAG:=0;
+   1255                   WRITELN(ROUND," ");
+   1256           END;
+   1257                   WRITELN(ROUND);
+   1258  
+   1259  
+   1260  
+   1261  & PER AVERE I TEMPI DI SIMULAZIONE E I RELATIVI RTT TRA I TERMINALI 4 E
+ 8
+   1262  
+   1263                    WRITE(RES,TIME, " ; ");
+   1264                    WRITELN(RES,RTT(4,8),";");
+   1265  
+   1266 END;
+   1267  
+   1268 /CONTROL/
+   1269 CLASS=ALL QUEUE;
+   1270 TMAX=T_MAX;
+   1271 PERIOD=PERIODO;
+   1272 TEST=NETTEST;
+   1273 &&TRACE=0,10000;
+   1274  
+   1275 /EXEC/
+   1276 	SIMUL;
+ 
+ *** SIMULATION ***
+      1 & Webterm destinazione Software destinazione Tempo ritasmission
+      2 12    2    8000;
+ PARTO DAL CLIENT         8 
+      3  
+      4 & Descrizione applicazione
+      5 & Acpu	Adisk	Aterm	Net	Bcpu	Bdisk
+      6 1   1  10   40  15  15;
+ Sono nel server web       12 
+      7 1   0   2   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=        2 
+ CHECK        2 
+      8 3   1   7   20  3   1;
+ Sono nel server web       12 
+      9 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=        4 
+ CHECK        4 
+     10 1   1  10   40  15  15;
+ Sono nel server web       13 
+     11 1   0   2   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=        6 
+ CHECK        6 
+     12 3   1   7   20  3   1;
+ Sono nel server web       13 
+     13 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=        8 
+ CHECK        8 
+     14 1   1  10   40  15  15;
+ Sono nel server web       12 
+     15 1   0   2   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       10 
+ CHECK       10 
+     16 3   1   7   20  3   1;
+ Sono nel server web       12 
+     17 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       12 
+ CHECK       12 
+     18 1   1  10   40  15  15;
+ Sono nel server web       13 
+     19 1   0   2   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       14 
+ CHECK       14 
+     20 3   1   7   20  3   1;
+ Sono nel server web       13 
+     21 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       16 
+ CHECK       16 
+     22 1   1  10   40  15  15;
+ Sono nel server web       12 
+     23 1   0   2   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       18 
+ CHECK       18 
+     24 3   1   7   20  3   1;
+ Sono nel server web       12 
+     25 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       20 
+ CHECK       20 
+     26 1   1  10   40  15  15;
+ Sono nel server web       13 
+     27 1   0   2   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       22 
+ CHECK       22 
+     28 3   1   7   20  3   1;
+ Sono nel server web       13 
+     29 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       24 
+ CHECK       24 
+     30 1   1  10   40  15  15;
+ Sono nel server web       12 
+     31 1   0   2   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       26 
+ CHECK       26 
+     32 3   1   7   20  3   1;
+ Sono nel server web       12 
+     33 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       28 
+ CHECK       28 
+     34 1   1  10   40  15  15;
+ Sono nel server web       13 
+     35 1   0   2   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       30 
+ CHECK       30 
+     36 3   1   7   20  3   1;
+ Sono nel server web       13 
+     37 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       32 
+ CHECK       32 
+     38 1   1  10   40  15  15;
+ Sono nel server web       12 
+     39 1   0   2   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       34 
+ CHECK       34 
+     40 3   1   7   20  3   1;
+ Sono nel server web       12 
+     41 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       36 
+ CHECK       36 
+     42 1   1  10   40  15  15;
+ Sono nel server web       13 
+     43 1   0   2   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       38 
+ CHECK       38 
+     44 3   1   7   20  3   1;
+ Sono nel server web       13 
+     45 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       40 
+ CHECK       40 
+     46 1   1  10   40  15  15;
+ Sono nel server web       12 
+     47 1   0   2   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       42 
+ CHECK       42 
+     48 3   1   7   20  3   1;
+ Sono nel server web       12 
+     49 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       44 
+ CHECK       44 
+     50 1   1  10   40  15  15;
+ Sono nel server web       13 
+     51 1   0   2   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       46 
+ CHECK       46 
+     52 3   1   7   20  3   1;
+ Sono nel server web       13 
+     53 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       48 
+ CHECK       48 
+     54 1   1  10   40  15  15;
+ Sono nel server web       12 
+     55 1   0   2   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       50 
+ CHECK       50 
+     56 3   1   7   20  3   1;
+ Sono nel server web       12 
+     57 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       52 
+ CHECK       52 
+     58 1   1  10   40  15  15;
+ Sono nel server web       13 
+     59 1   0   2   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       54 
+ CHECK       54 
+     60 3   1   7   20  3   1;
+ Sono nel server web       13 
+     61 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       56 
+ CHECK       56 
+     62 1   1  10   40  15  15;
+ Sono nel server web       12 
+     63 1   0   2   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       58 
+ CHECK       58 
+     64 3   1   7   20  3   1;
+ Sono nel server web       12 
+     65 3   1   7   20  3   1;
+ SONO NEL CLIENT         8 
+ COUNT=       60 
+ CHECK       60 
+     66 -1; && Fine applicazione
+ FINE APPLICAZIONE
+ ... TIME =       500000.00
+ *******************************************************************
+ *   NAME   *  SERVICE * BUSY PCT *  CUST NB * RESPONSE *  SERV NB *
+ *******************************************************************
+ *          *          *          *          *          *          *
+ *ROUTER 1. *          *          *          *          *          *
+ *CPU     . * 2.797    *0.8289E-01*0.9040E-01* 3.051    *     14816*
+ *(EMISSION)* 2.756    *0.7952E-01*0.8683E-01* 3.010    *     14425*
+ *(RICHIN  )* 4.308    *0.3369E-02*0.3578E-02* 4.575    *       391*
+ *          *          *          *          *          *          *
+ *ROUTER 2. *          *          *          *          *          *
+ *CPU     . * 2.283    *0.9581E-01*0.1033    * 2.463    *     20980*
+ *(EMISSION)* 2.245    *0.9152E-01*0.9882E-01* 2.423    *     20388*
+ *(RICHIN  )* 3.629    *0.4283E-02*0.4530E-02* 3.839    *       590*
+ *(WEBAP   )*0.1388    *0.5552E-06*0.5552E-06*0.1388    *         2*
+ *          *          *          *          *          *          *
+ *ROUTER 3. *          *          *          *          *          *
+ *CPU     . * 2.392    *0.9361E-01*0.1041    * 2.659    *     19565*
+ *(EMISSION)* 2.334    *0.8840E-01*0.9845E-01* 2.599    *     18940*
+ *(RICHIN  )* 4.184    *0.5213E-02*0.5606E-02* 4.499    *       623*
+ *(WEBAP   )*0.6041E-01*0.2416E-06*0.2416E-06*0.6041E-01*         2*
+ *          *          *          *          *          *          *
+ *ROUTER 4. *          *          *          *          *          *
+ *CPU     . * 2.142    *0.1290    *0.1533    * 2.545    *     30120*
+ *(EMISSION)* 2.095    *0.1223    *0.1458    * 2.497    *     29185*
+ *(RICHIN  )* 3.618    *0.6730E-02*0.7534E-02* 4.050    *       930*
+ *(WEBAP   )*0.7507E-01*0.7507E-06*0.2800E-05*0.2800    *         5*
+ *          *          *          *          *          *          *
+ *ROUTER 5. *          *          *          *          *          *
+ *CPU     . * 2.606    *0.2747    *0.3943    * 3.739    *     52719*
+ *(EMISSION)* 2.549    *0.2602    *0.3757    * 3.680    *     51051*
+ *(RICHIN  )* 4.372    *0.1452E-01*0.1858E-01* 5.593    *      1661*
+ *(WEBAP   )*0.1021    *0.1430E-05*0.4397E-05*0.3141    *         7*
+ *          *          *          *          *          *          *
+ *ROUTER 6. *          *          *          *          *          *
+ *CPU     . * 2.102    *0.1390    *0.1641    * 2.482    *     33051*
+ *(EMISSION)* 2.058    *0.1319    *0.1562    * 2.438    *     32042*
+ *(RICHIN  )* 3.512    *0.7046E-02*0.7836E-02* 3.906    *      1003*
+ *(WEBAP   )* 2.792    *0.3350E-04*0.3350E-04* 2.792    *         6*
+ *          *          *          *          *          *          *
+ *ROUTER 7. *          *          *          *          *          *
+ *CPU     . * 2.325    *0.6573E-01*0.6760E-01* 2.391    *     14134*
+ *(EMISSION)* 2.277    *0.6239E-01*0.6423E-01* 2.344    *     13699*
+ *(RICHIN  )* 3.838    *0.3323E-02*0.3343E-02* 3.860    *       433*
+ *(WEBAP   )* 5.397    *0.2159E-04*0.2159E-04* 5.397    *         2*
+ *          *          *          *          *          *          *
+ *ROUTER 8. *          *          *          *          *          *
+ *CPU     . * 5.327    *0.1790    *0.2236    * 6.654    *     16799*
+ *(EMISSION)* 5.196    *0.1689    *0.2119    * 6.521    *     16249*
+ *(RICHIN  )* 9.263    *0.1010E-01*0.1160E-01* 10.65    *       545*
+ *(WEBAP   )* 2.022    *0.2022E-04*0.4574E-04* 4.574    *         5*
+ *          *          *          *          *          *          *
+ *VIA    1. *          *          *          *          *          *
+ *CANALE  . * 32.00    *0.5100    *0.6500    * 40.78    *      7969*
+ *(EMISSION)* 32.00    *0.4965    *0.6337    * 40.84    *      7758*
+ *(RICHIN  )* 32.00    *0.1350E-01*0.1627E-01* 38.56    *       211*
+ *          *          *          *          *          *          *
+ *VIA    2. *          *          *          *          *          *
+ *CANALE  . * 32.00    *0.6391    * 1.052    * 52.67    *      9986*
+ *(EMISSION)* 32.00    *0.6249    * 1.028    * 52.65    *      9763*
+ *(RICHIN  )* 32.00    *0.1427E-01*0.2377E-01* 53.30    *       223*
+ *          *          *          *          *          *          *
+ *VIA    3. *          *          *          *          *          *
+ *CANALE  . * 54.00    *0.6351    *0.9418    * 80.07    *      5881*
+ *(EMISSION)* 54.00    *0.6174    *0.9153    * 80.05    *      5717*
+ *(RICHIN  )* 54.00    *0.1760E-01*0.2625E-01* 80.52    *       163*
+ *(WEBAP   )* 54.00    *0.1080E-03*0.2434E-03* 121.7    *         1*
+ *          *          *          *          *          *          *
+ *VIA    4. *          *          *          *          *          *
+ *CANALE  . * 34.00    *0.9997    * 315.7    *0.1038E+05*     14701*
+ *(EMISSION)* 34.00    *0.9675    * 307.1    *0.1043E+05*     14228*
+ *(RICHIN  )* 34.00    *0.3196E-01* 8.605    * 8863.    *       470*
+ *(WEBAP   )* 34.00    *0.2040E-03*0.4493E-03* 74.88    *         3*
+ *          *          *          *          *          *          *
+ *VIA    5. *          *          *          *          *          *
+ *CANALE  . * 11.70    *0.2437    *0.2752    * 13.21    *     10414*
+ *(EMISSION)* 11.70    *0.2363    *0.2668    * 13.21    *     10100*
+ *(RICHIN  )* 11.70    *0.7294E-02*0.8309E-02* 13.33    *       311*
+ *(WEBAP   )* 11.70    *0.7020E-04*0.7020E-04* 11.70    *         3*
+ *          *          *          *          *          *          *
+ *VIA    6. *          *          *          *          *          *
+ *CANALE  . * 22.00    *0.4494    *0.6103    * 29.88    *     10213*
+ *(EMISSION)* 22.00    *0.4354    *0.5905    * 29.84    *      9895*
+ *(RICHIN  )* 22.00    *0.1390E-01*0.1967E-01* 31.13    *       316*
+ *(WEBAP   )* 22.00    *0.8800E-04*0.1298E-03* 32.45    *         2*
+ *          *          *          *          *          *          *
+ *VIA    7. *          *          *          *          *          *
+ *CANALE  . * 22.00    *0.3461    *0.4189    * 26.62    *      7865*
+ *(EMISSION)* 22.00    *0.3348    *0.4061    * 26.68    *      7608*
+ *(RICHIN  )* 22.00    *0.1126E-01*0.1277E-01* 24.95    *       256*
+ *(WEBAP   )* 22.00    *0.4400E-04*0.4400E-04* 22.00    *         1*
+ *          *          *          *          *          *          *
+ *VIA    8. *          *          *          *          *          *
+ *CANALE  . * 12.40    *0.1248    *0.1325    * 13.16    *      5033*
+ *(EMISSION)* 12.40    *0.1203    *0.1278    * 13.17    *      4852*
+ *(RICHIN  )* 12.40    *0.4464E-02*0.4697E-02* 13.05    *       180*
+ *(WEBAP   )* 12.40    *0.2480E-04*0.2480E-04* 12.40    *         1*
+ *          *          *          *          *          *          *
+ *VIA    9. *          *          *          *          *          *
+ *CANALE  . * 21.00    *0.3291    *0.3965    * 25.30    *      7835*
+ *(EMISSION)* 21.00    *0.3183    *0.3841    * 25.34    *      7579*
+ *(RICHIN  )* 21.00    *0.1067E-01*0.1227E-01* 24.16    *       254*
+ *(WEBAP   )* 21.00    *0.8400E-04*0.1196E-03* 29.89    *         2*
+ *          *          *          *          *          *          *
+ *VIA   10. *          *          *          *          *          *
+ *CANALE  . * 10.50    *0.2159    *0.2411    * 11.72    *     10282*
+ *(EMISSION)* 10.50    *0.2097    *0.2344    * 11.73    *      9988*
+ *(RICHIN  )* 10.50    *0.6174E-02*0.6728E-02* 11.44    *       294*
+ *          *          *          *          *          *          *
+ *VIA   11. *          *          *          *          *          *
+ *CANALE  . * 10.50    *0.3997    *0.4954    * 13.01    *     19035*
+ *(EMISSION)* 10.50    *0.3877    *0.4810    * 13.03    *     18461*
+ *(RICHIN  )* 10.50    *0.1201E-01*0.1432E-01* 12.52    *       572*
+ *(WEBAP   )* 10.50    *0.4200E-04*0.4200E-04* 10.50    *         2*
+ *          *          *          *          *          *          *
+ *VIA   12. *          *          *          *          *          *
+ *CANALE  . * 20.00    *0.5072    *0.7678    * 30.28    *     12679*
+ *(EMISSION)* 20.00    *0.4913    *0.7447    * 30.31    *     12283*
+ *(RICHIN  )* 20.00    *0.1576E-01*0.2308E-01* 29.29    *       394*
+ *(WEBAP   )* 20.00    *0.8000E-04*0.8115E-04* 20.29    *         2*
+ *          *          *          *          *          *          *
+ *VIA   13. *          *          *          *          *          *
+ *CANALE  . * 20.00    *0.5267    *0.6579    * 24.98    *     13166*
+ *(EMISSION)* 20.00    *0.5107    *0.6384    * 25.00    *     12766*
+ *(RICHIN  )* 20.00    *0.1592E-01*0.1942E-01* 24.40    *       398*
+ *(WEBAP   )* 20.00    *0.8000E-04*0.8000E-04* 20.00    *         2*
+ *          *          *          *          *          *          *
+ *VIA   14. *          *          *          *          *          *
+ *CANALE  . * 11.00    *0.2227    *0.2501    * 12.35    *     10125*
+ *(EMISSION)* 11.00    *0.2152    *0.2419    * 12.36    *      9782*
+ *(RICHIN  )* 11.00    *0.7524E-02*0.8183E-02* 11.96    *       342*
+ *(WEBAP   )* 11.00    *0.2200E-04*0.2200E-04* 11.00    *         1*
+ *          *          *          *          *          *          *
+ *VIA   15. *          *          *          *          *          *
+ *CANALE  . * 11.00    *0.3717    *0.4535    * 13.42    *     16896*
+ *(EMISSION)* 11.00    *0.3596    *0.4391    * 13.43    *     16345*
+ *(RICHIN  )* 11.00    *0.1208E-01*0.1436E-01* 13.07    *       549*
+ *(WEBAP   )* 11.00    *0.4400E-04*0.4400E-04* 11.00    *         2*
+ *          *          *          *          *          *          *
+ *VIA   16. *          *          *          *          *          *
+ *CANALE  . * 32.00    *0.3732    *0.4287    * 36.76    *      5831*
+ *(EMISSION)* 32.00    *0.3622    *0.4163    * 36.78    *      5660*
+ *(RICHIN  )* 32.00    *0.1088E-01*0.1233E-01* 36.27    *       170*
+ *(WEBAP   )* 32.00    *0.6400E-04*0.6400E-04* 32.00    *         1*
+ *          *          *          *          *          *          *
+ *VIA   17. *          *          *          *          *          *
+ *CANALE  . * 54.00    *0.9996    * 2974.    *0.9884E+05*      9255*
+ *(EMISSION)* 54.00    *0.9648    * 2895.    *0.9975E+05*      8932*
+ *(RICHIN  )* 54.00    *0.3467E-01* 79.06    *0.7401E+05*       321*
+ *(WEBAP   )* 54.00    *0.2160E-03*0.7566E-03* 189.2    *         2*
+ *          *          *          *          *          *          *
+ *HOST   1. *          *          *          *          *          *
+ *USER    . * 120.8    *0.9998    * 250.6    *0.2851E+05*      4136*
+ *(EMISSION)* 120.7    *0.9271    * 233.9    *0.2862E+05*      3839*
+ *(RICHIN  )* 122.4    *0.7270E-01* 16.77    *0.2708E+05*       297*
+ *          *          *          *          *          *          *
+ *HOST   1. *          *          *          *          *          *
+ *CONTROL . * 804.5    *0.9956    * 1718.    *0.1915E+06*       617*
+ *(EMISSION)* 805.0    *0.9333    * 1579.    *0.1926E+06*       578*
+ *(RICHIN  )* 798.5    *0.6228E-01* 138.9    *0.1758E+06*        39*
+ *          *          *          *          *          *          *
+ *HOST   1. *          *          *          *          *          *
+ *PROTOCOL. * 5.862    *0.3513E-01*0.3602E-01* 6.012    *      2996*
+ *(EMISSION)* 8.035    *0.2750E-01*0.2763E-01* 8.074    *      1711*
+ *(RECEPT  )* 2.695    *0.6717E-02*0.7482E-02* 3.002    *      1246*
+ *(RICHIN  )* 11.70    *0.9129E-03*0.9129E-03* 11.70    *        39*
+ *          *          *          *          *          *          *
+ *HOST   1. *          *          *          *          *          *
+ *ACCESS_E. * 2.162    *0.7568E-02*0.7602E-02* 2.172    *      1750*
+ *(EMISSION)* 2.149    *0.7354E-02*0.7389E-02* 2.159    *      1711*
+ *(RICHIN  )* 2.732    *0.2131E-03*0.2131E-03* 2.732    *        39*
+ *          *          *          *          *          *          *
+ *HOST   1. *          *          *          *          *          *
+ *ACCESS_R. *0.9230    *0.2300E-02*0.2314E-02*0.9284    *      1246*
+ *(RECEPT  )*0.9230    *0.2300E-02*0.2314E-02*0.9284    *      1246*
+ *          *          *          *          *          *          *
+ *HOST   1. *          *          *          *          *          *
+ *WINDOW  . *0.0000E+00*0.0000E+00*0.9956    * 828.7    *       599*
+ *(EMISSION)*0.0000E+00*0.0000E+00*0.9333    * 829.3    *       561*
+ *(RICHIN  )*0.0000E+00*0.0000E+00*0.6228E-01* 819.5    *        38*
+ *          *          *          *          *          *          *
+ *HOST   1. *          *          *          *          *          *
+ *TIMER   . * 453.4    *0.9996    * 9.947    * 4484.    *      1101*
+ *(EMISSION)* 455.8    *0.9694    * 9.611    * 4490.    *      1062*
+ *(RICHIN  )* 387.9    *0.3026E-01*0.3361    * 4309.    *        39*
+ *          *          *          *          *          *          *
+ *LINE_HR1. *          *          *          *          *          *
+ *R       . * 12.00    *0.0000E+00*0.4200E-01* 12.00    *      1750*
+ *(EMISSION)* 12.00    *0.0000E+00*0.4106E-01* 12.00    *      1711*
+ *(RICHIN  )* 12.00    *0.0000E+00*0.9360E-03* 12.00    *        39*
+ *          *          *          *          *          *          *
+ *HOST   2. *          *          *          *          *          *
+ *USER    . * 122.7    *0.9946    * 160.9    *0.1869E+05*      4051*
+ *(EMISSION)* 123.1    *0.9365    * 151.9    *0.1879E+05*      3804*
+ *(RICHIN  )* 117.7    *0.5815E-01* 8.957    *0.1718E+05*       247*
+ *          *          *          *          *          *          *
+ *HOST   2. *          *          *          *          *          *
+ *CONTROL . * 838.6    *0.9948    * 1723.    *0.2011E+06*       593*
+ *(EMISSION)* 855.1    *0.9305    * 1610.    *0.2010E+06*       544*
+ *(RICHIN  )* 655.8    *0.6427E-01* 113.4    *0.2018E+06*        49*
+ *          *          *          *          *          *          *
+ *HOST   2. *          *          *          *          *          *
+ *PROTOCOL. * 6.220    *0.3477E-01*0.3571E-01* 6.387    *      2795*
+ *(EMISSION)* 8.488    *0.2716E-01*0.2734E-01* 8.544    *      1600*
+ *(RECEPT  )* 2.864    *0.6564E-02*0.7294E-02* 3.182    *      1146*
+ *(RICHIN  )* 10.63    *0.1042E-02*0.1071E-02* 10.93    *        49*
+ *          *          *          *          *          *          *
+ *HOST   2. *          *          *          *          *          *
+ *ACCESS_E. * 2.250    *0.7422E-02*0.7461E-02* 2.262    *      1649*
+ *(EMISSION)* 2.217    *0.7094E-02*0.7133E-02* 2.229    *      1600*
+ *(RICHIN  )* 3.344    *0.3277E-03*0.3287E-03* 3.354    *        49*
+ *          *          *          *          *          *          *
+ *HOST   2. *          *          *          *          *          *
+ *ACCESS_R. *0.8258    *0.1893E-02*0.1898E-02*0.8281    *      1146*
+ *(RECEPT  )*0.8258    *0.1893E-02*0.1898E-02*0.8281    *      1146*
+ *          *          *          *          *          *          *
+ *HOST   2. *          *          *          *          *          *
+ *WINDOW  . *0.0000E+00*0.0000E+00*0.9948    * 864.9    *       575*
+ *(EMISSION)*0.0000E+00*0.0000E+00*0.9305    * 877.7    *       530*
+ *(RICHIN  )*0.0000E+00*0.0000E+00*0.6427E-01* 714.1    *        45*
+ *          *          *          *          *          *          *
+ *HOST   2. *          *          *          *          *          *
+ *TIMER   . * 465.3    *0.9996    * 10.95    * 5069.    *      1074*
+ *(EMISSION)* 466.9    *0.9573    * 10.49    * 5089.    *      1025*
+ *(RICHIN  )* 431.5    *0.4229E-01*0.4556    * 4649.    *        49*
+ *          *          *          *          *          *          *
+ *LINE_HR2. *          *          *          *          *          *
+ *R       . * 13.00    *0.0000E+00*0.4287E-01* 13.00    *      1649*
+ *(EMISSION)* 13.00    *0.0000E+00*0.4160E-01* 13.00    *      1600*
+ *(RICHIN  )* 13.00    *0.0000E+00*0.1274E-02* 13.00    *        49*
+ *          *          *          *          *          *          *
+ *HOST   3. *          *          *          *          *          *
+ *USER    . * 120.9    *0.9979    * 232.4    *0.2558E+05*      4125*
+ *(EMISSION)* 121.7    *0.9433    * 218.8    *0.2567E+05*      3873*
+ *(RICHIN  )* 108.3    *0.5459E-01* 13.58    *0.2421E+05*       252*
+ *          *          *          *          *          *          *
+ *HOST   3. *          *          *          *          *          *
+ *CONTROL . * 892.0    *0.9944    * 1757.    *0.2012E+06*       557*
+ *(EMISSION)* 885.6    *0.9289    * 1647.    *0.2021E+06*       524*
+ *(RICHIN  )* 993.1    *0.6555E-01* 110.2    *0.1871E+06*        33*
+ *          *          *          *          *          *          *
+ *HOST   3. *          *          *          *          *          *
+ *PROTOCOL. * 6.849    *0.3831E-01*0.3961E-01* 7.080    *      2797*
+ *(EMISSION)* 8.718    *0.2837E-01*0.2891E-01* 8.884    *      1627*
+ *(RECEPT  )* 4.011    *0.9121E-02*0.9870E-02* 4.340    *      1137*
+ *(RICHIN  )* 12.49    *0.8244E-03*0.8260E-03* 12.52    *        33*
+ *          *          *          *          *          *          *
+ *HOST   3. *          *          *          *          *          *
+ *ACCESS_E. * 2.201    *0.7306E-02*0.7375E-02* 2.222    *      1660*
+ *(EMISSION)* 2.183    *0.7104E-02*0.7174E-02* 2.205    *      1627*
+ *(RICHIN  )* 3.060    *0.2019E-03*0.2019E-03* 3.060    *        33*
+ *          *          *          *          *          *          *
+ *HOST   3. *          *          *          *          *          *
+ *ACCESS_R. *0.9278    *0.2110E-02*0.2122E-02*0.9332    *      1137*
+ *(RECEPT  )*0.9278    *0.2110E-02*0.2122E-02*0.9332    *      1137*
+ *          *          *          *          *          *          *
+ *HOST   3. *          *          *          *          *          *
+ *WINDOW  . *0.0000E+00*0.0000E+00*0.9944    * 928.7    *       535*
+ *(EMISSION)*0.0000E+00*0.0000E+00*0.9289    * 922.6    *       503*
+ *(RICHIN  )*0.0000E+00*0.0000E+00*0.6555E-01* 1024.    *        32*
+ *          *          *          *          *          *          *
+ *HOST   3. *          *          *          *          *          *
+ *TIMER   . * 472.4    *0.9984    * 11.93    * 5619.    *      1056*
+ *(EMISSION)* 475.2    *0.9740    * 11.60    * 5634.    *      1024*
+ *(RICHIN  )* 382.3    *0.2447E-01*0.3330    * 5142.    *        32*
+ *          *          *          *          *          *          *
+ *LINE_HR3. *          *          *          *          *          *
+ *R       . * 12.60    *0.0000E+00*0.4183E-01* 12.60    *      1660*
+ *(EMISSION)* 12.60    *0.0000E+00*0.4100E-01* 12.60    *      1627*
+ *(RICHIN  )* 12.60    *0.0000E+00*0.8316E-03* 12.60    *        33*
+ *          *          *          *          *          *          *
+ *HOST   4. *          *          *          *          *          *
+ *USER    . * 120.4    *0.9994    * 334.8    *0.3698E+05*      4149*
+ *(EMISSION)* 120.3    *0.9211    * 310.1    *0.3716E+05*      3827*
+ *(RICHIN  )* 121.6    *0.7828E-01* 24.69    *0.3491E+05*       322*
+ *          *          *          *          *          *          *
+ *HOST   4. *          *          *          *          *          *
+ *CONTROL . * 791.2    *0.9876    * 1665.    *0.1784E+06*       624*
+ *(EMISSION)* 808.0    *0.9130    * 1534.    *0.1811E+06*       565*
+ *(RICHIN  )* 630.6    *0.7455E-01* 130.7    *0.1524E+06*        59*
+ *          *          *          *          *          *          *
+ *HOST   4. *          *          *          *          *          *
+ *PROTOCOL. * 6.978    *0.4285E-01*0.4405E-01* 7.174    *      3070*
+ *(EMISSION)* 9.367    *0.3239E-01*0.3265E-01* 9.443    *      1729*
+ *(RECEPT  )* 3.469    *0.8895E-02*0.9832E-02* 3.835    *      1282*
+ *(RICHIN  )* 13.24    *0.1562E-02*0.1563E-02* 13.24    *        59*
+ *          *          *          *          *          *          *
+ *HOST   4. *          *          *          *          *          *
+ *ACCESS_E. * 2.210    *0.7904E-02*0.7961E-02* 2.226    *      1788*
+ *(EMISSION)* 2.137    *0.7390E-02*0.7447E-02* 2.154    *      1729*
+ *(RICHIN  )* 4.356    *0.5141E-03*0.5141E-03* 4.356    *        59*
+ *          *          *          *          *          *          *
+ *HOST   4. *          *          *          *          *          *
+ *ACCESS_R. *0.9398    *0.2410E-02*0.2437E-02*0.9504    *      1282*
+ *(RECEPT  )*0.9398    *0.2410E-02*0.2437E-02*0.9504    *      1282*
+ *          *          *          *          *          *          *
+ *HOST   4. *          *          *          *          *          *
+ *WINDOW  . *0.0000E+00*0.0000E+00*0.9876    * 839.7    *       588*
+ *(EMISSION)*0.0000E+00*0.0000E+00*0.9130    * 840.7    *       543*
+ *(RICHIN  )*0.0000E+00*0.0000E+00*0.7455E-01* 826.8    *        45*
+ *          *          *          *          *          *          *
+ *HOST   4. *          *          *          *          *          *
+ *TIMER   . * 458.3    *0.9993    * 19.84    * 9045.    *      1090*
+ *(EMISSION)* 463.2    *0.9580    * 18.99    * 9126.    *      1034*
+ *(RICHIN  )* 368.4    *0.4126E-01*0.8572    * 7554.    *        56*
+ *          *          *          *          *          *          *
+ *LINE_HR4. *          *          *          *          *          *
+ *R       . * 10.00    *0.0000E+00*0.3576E-01* 10.00    *      1788*
+ *(EMISSION)* 10.00    *0.0000E+00*0.3458E-01* 10.00    *      1729*
+ *(RICHIN  )* 10.00    *0.0000E+00*0.1180E-02* 10.00    *        59*
+ *          *          *          *          *          *          *
+ *HOST   5. *          *          *          *          *          *
+ *USER    . * 120.6    *0.9993    * 245.2    *0.2720E+05*      4144*
+ *(EMISSION)* 120.5    *0.8971    * 219.6    *0.2713E+05*      3723*
+ *(RICHIN  )* 121.4    *0.1022    * 25.56    *0.2777E+05*       421*
+ *          *          *          *          *          *          *
+ *HOST   5. *          *          *          *          *          *
+ *CONTROL . * 743.1    *0.9956    * 1719.    *0.2059E+06*       668*
+ *(EMISSION)* 748.1    *0.9245    * 1546.    *0.2094E+06*       616*
+ *(RICHIN  )* 684.2    *0.7116E-01* 172.5    *0.1643E+06*        52*
+ *          *          *          *          *          *          *
+ *HOST   5. *          *          *          *          *          *
+ *PROTOCOL. * 5.314    *0.3818E-01*0.3977E-01* 5.535    *      3592*
+ *(EMISSION)* 7.096    *0.2802E-01*0.2856E-01* 7.235    *      1974*
+ *(RECEPT  )* 2.896    *0.9069E-02*0.1004E-01* 3.206    *      1566*
+ *(RICHIN  )* 10.52    *0.1094E-02*0.1162E-02* 11.18    *        52*
+ *          *          *          *          *          *          *
+ *HOST   5. *          *          *          *          *          *
+ *ACCESS_E. * 1.941    *0.7864E-02*0.7963E-02* 1.965    *      2026*
+ *(EMISSION)* 1.918    *0.7571E-02*0.7670E-02* 1.943    *      1974*
+ *(RICHIN  )* 2.811    *0.2924E-03*0.2924E-03* 2.811    *        52*
+ *          *          *          *          *          *          *
+ *HOST   5. *          *          *          *          *          *
+ *ACCESS_R. *0.9967    *0.3122E-02*0.3141E-02* 1.003    *      1566*
+ *(RECEPT  )*0.9967    *0.3122E-02*0.3141E-02* 1.003    *      1566*
+ *          *          *          *          *          *          *
+ *HOST   5. *          *          *          *          *          *
+ *WINDOW  . *0.0000E+00*0.0000E+00*0.9956    * 760.2    *       653*
+ *(EMISSION)*0.0000E+00*0.0000E+00*0.9245    * 761.7    *       605*
+ *(RICHIN  )*0.0000E+00*0.0000E+00*0.7116E-01* 741.2    *        48*
+ *          *          *          *          *          *          *
+ *HOST   5. *          *          *          *          *          *
+ *TIMER   . * 452.1    *0.9994    * 11.95    * 5374.    *      1104*
+ *(EMISSION)* 453.9    *0.9563    * 11.39    * 5376.    *      1052*
+ *(RICHIN  )* 414.4    *0.4310E-01*0.5549    * 5335.    *        52*
+ *          *          *          *          *          *          *
+ *LINE_HR5. *          *          *          *          *          *
+ *R       . * 11.00    *0.0000E+00*0.4457E-01* 11.00    *      2026*
+ *(EMISSION)* 11.00    *0.0000E+00*0.4343E-01* 11.00    *      1974*
+ *(RICHIN  )* 11.00    *0.0000E+00*0.1144E-02* 11.00    *        52*
+ *          *          *          *          *          *          *
+ *HOST   6. *          *          *          *          *          *
+ *USER    . * 120.2    * 1.000    * 220.4    *0.2423E+05*      4159*
+ *(EMISSION)* 121.0    *0.9072    * 199.9    *0.2438E+05*      3748*
+ *(RICHIN  )* 112.9    *0.9282E-01* 20.48    *0.2283E+05*       411*
+ *          *          *          *          *          *          *
+ *HOST   6. *          *          *          *          *          *
+ *CONTROL . * 796.0    *0.9954    * 1752.    *0.2066E+06*       625*
+ *(EMISSION)* 798.0    *0.8751    * 1579.    *0.2098E+06*       548*
+ *(RICHIN  )* 781.3    *0.1203    * 173.0    *0.1838E+06*        77*
+ *          *          *          *          *          *          *
+ *HOST   6. *          *          *          *          *          *
+ *PROTOCOL. * 5.908    *0.4022E-01*0.4159E-01* 6.109    *      3404*
+ *(EMISSION)* 7.328    *0.2714E-01*0.2766E-01* 7.466    *      1852*
+ *(RECEPT  )* 3.604    *0.1063E-01*0.1144E-01* 3.879    *      1475*
+ *(RICHIN  )* 15.91    *0.2450E-02*0.2491E-02* 16.18    *        77*
+ *          *          *          *          *          *          *
+ *HOST   6. *          *          *          *          *          *
+ *ACCESS_E. * 1.946    *0.7507E-02*0.7591E-02* 1.968    *      1929*
+ *(EMISSION)* 1.905    *0.7055E-02*0.7139E-02* 1.927    *      1852*
+ *(RICHIN  )* 2.937    *0.4522E-03*0.4524E-03* 2.938    *        77*
+ *          *          *          *          *          *          *
+ *HOST   6. *          *          *          *          *          *
+ *ACCESS_R. * 1.004    *0.2960E-02*0.2978E-02* 1.010    *      1475*
+ *(RECEPT  )* 1.004    *0.2960E-02*0.2978E-02* 1.010    *      1475*
+ *          *          *          *          *          *          *
+ *HOST   6. *          *          *          *          *          *
+ *WINDOW  . *0.0000E+00*0.0000E+00*0.9954    * 816.9    *       609*
+ *(EMISSION)*0.0000E+00*0.0000E+00*0.8751    * 819.0    *       534*
+ *(RICHIN  )*0.0000E+00*0.0000E+00*0.1203    * 802.1    *        75*
+ *          *          *          *          *          *          *
+ *HOST   6. *          *          *          *          *          *
+ *TIMER   . * 473.7    *0.9998    * 11.94    * 5631.    *      1055*
+ *(EMISSION)* 476.3    *0.9321    * 11.06    * 5623.    *       978*
+ *(RICHIN  )* 439.8    *0.6773E-01*0.8824    * 5730.    *        77*
+ *          *          *          *          *          *          *
+ *LINE_HR6. *          *          *          *          *          *
+ *R       . * 12.00    *0.0000E+00*0.4630E-01* 12.00    *      1929*
+ *(EMISSION)* 12.00    *0.0000E+00*0.4445E-01* 12.00    *      1852*
+ *(RICHIN  )* 12.00    *0.0000E+00*0.1848E-02* 12.00    *        77*
+ *          *          *          *          *          *          *
+ *HOST   7. *          *          *          *          *          *
+ *USER    . * 121.9    *0.9992    * 299.7    *0.3267E+05*      4097*
+ *(EMISSION)* 122.4    *0.9004    * 269.3    *0.3266E+05*      3678*
+ *(RICHIN  )* 117.9    *0.9881E-01* 30.41    *0.3275E+05*       419*
+ *          *          *          *          *          *          *
+ *HOST   7. *          *          *          *          *          *
+ *CONTROL . * 723.1    *0.9898    * 1672.    *0.1959E+06*       684*
+ *(EMISSION)* 739.7    *0.9076    * 1510.    *0.2016E+06*       613*
+ *(RICHIN  )* 579.3    *0.8227E-01* 162.3    *0.1471E+06*        71*
+ *          *          *          *          *          *          *
+ *HOST   7. *          *          *          *          *          *
+ *PROTOCOL. * 6.032    *0.4318E-01*0.4472E-01* 6.248    *      3579*
+ *(EMISSION)* 7.916    *0.3062E-01*0.3103E-01* 8.023    *      1934*
+ *(RECEPT  )* 3.437    *0.1082E-01*0.1195E-01* 3.796    *      1574*
+ *(RICHIN  )* 12.25    *0.1739E-02*0.1739E-02* 12.25    *        71*
+ *          *          *          *          *          *          *
+ *HOST   7. *          *          *          *          *          *
+ *ACCESS_E. * 1.955    *0.7838E-02*0.7901E-02* 1.970    *      2005*
+ *(EMISSION)* 1.915    *0.7405E-02*0.7468E-02* 1.931    *      1934*
+ *(RICHIN  )* 3.046    *0.4325E-03*0.4325E-03* 3.046    *        71*
+ *          *          *          *          *          *          *
+ *HOST   7. *          *          *          *          *          *
+ *ACCESS_R. * 1.032    *0.3250E-02*0.3261E-02* 1.036    *      1574*
+ *(RECEPT  )* 1.032    *0.3250E-02*0.3261E-02* 1.036    *      1574*
+ *          *          *          *          *          *          *
+ *HOST   7. *          *          *          *          *          *
+ *WINDOW  . *0.0000E+00*0.0000E+00*0.9898    * 757.4    *       653*
+ *(EMISSION)*0.0000E+00*0.0000E+00*0.9076    * 768.6    *       590*
+ *(RICHIN  )*0.0000E+00*0.0000E+00*0.8227E-01* 652.9    *        63*
+ *          *          *          *          *          *          *
+ *HOST   7. *          *          *          *          *          *
+ *TIMER   . * 459.6    *0.9997    * 13.90    * 6357.    *      1087*
+ *(EMISSION)* 458.9    *0.9330    * 13.03    * 6375.    *      1016*
+ *(RICHIN  )* 469.6    *0.6669E-01*0.8656    * 6096.    *        71*
+ *          *          *          *          *          *          *
+ *LINE_HR7. *          *          *          *          *          *
+ *R       . * 13.00    *0.0000E+00*0.5213E-01* 13.00    *      2005*
+ *(EMISSION)* 13.00    *0.0000E+00*0.5028E-01* 13.00    *      1934*
+ *(RICHIN  )* 13.00    *0.0000E+00*0.1846E-02* 13.00    *        71*
+ *          *          *          *          *          *          *
+ *HOST   8. *          *          *          *          *          *
+ *USER    . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *HOST   8. *          *          *          *          *          *
+ *CONTROL . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *HOST   8. *          *          *          *          *          *
+ *PROTOCOL. * 7.034    *0.4221E-04*0.4221E-04* 7.034    *         3*
+ *(WEBAP   )* 7.034    *0.4221E-04*0.4221E-04* 7.034    *         3*
+ *          *          *          *          *          *          *
+ *HOST   8. *          *          *          *          *          *
+ *ACCESS_E. *0.6224    *0.2490E-05*0.2490E-05*0.6224    *         2*
+ *(WEBAP   )*0.6224    *0.2490E-05*0.2490E-05*0.6224    *         2*
+ *          *          *          *          *          *          *
+ *HOST   8. *          *          *          *          *          *
+ *ACCESS_R. *0.2377E-01*0.9508E-07*0.9508E-07*0.2377E-01*         2*
+ *(WEBAP   )*0.2377E-01*0.9508E-07*0.9508E-07*0.2377E-01*         2*
+ *          *          *          *          *          *          *
+ *HOST   8. *          *          *          *          *          *
+ *TIMER   . * 244.6    *0.4892E-03*0.4892E-03* 244.6    *         1*
+ *(WEBAP   )* 244.6    *0.4892E-03*0.4892E-03* 244.6    *         1*
+ *          *          *          *          *          *          *
+ *LINE_HR8. *          *          *          *          *          *
+ *R       . * 15.00    *0.0000E+00*0.6000E-04* 15.00    *         2*
+ *(WEBAP   )* 15.00    *0.0000E+00*0.6000E-04* 15.00    *         2*
+ *          *          *          *          *          *          *
+ *HOST   9. *          *          *          *          *          *
+ *USER    . * 120.3    *0.9965    * 116.2    *0.1332E+05*      4137*
+ *(EMISSION)* 121.1    *0.9297    * 108.2    *0.1337E+05*      3835*
+ *(RICHIN  )* 110.5    *0.6672E-01* 8.031    *0.1277E+05*       302*
+ *          *          *          *          *          *          *
+ *HOST   9. *          *          *          *          *          *
+ *CONTROL . * 1062.    *0.9953    * 1827.    *0.2205E+06*       468*
+ *(EMISSION)* 1055.    *0.8853    * 1698.    *0.2228E+06*       419*
+ *(RICHIN  )* 1123.    *0.1100    * 129.6    *0.2006E+06*        49*
+ *          *          *          *          *          *          *
+ *HOST   9. *          *          *          *          *          *
+ *PROTOCOL. * 6.104    *0.3208E-01*0.3278E-01* 6.237    *      2628*
+ *(EMISSION)* 7.820    *0.2349E-01*0.2373E-01* 7.900    *      1502*
+ *(RECEPT  )* 3.439    *0.7407E-02*0.7842E-02* 3.641    *      1077*
+ *(RICHIN  )* 12.05    *0.1180E-02*0.1209E-02* 12.33    *        49*
+ *          *          *          *          *          *          *
+ *HOST   9. *          *          *          *          *          *
+ *ACCESS_E. * 1.998    *0.6197E-02*0.6312E-02* 2.035    *      1551*
+ *(EMISSION)* 1.945    *0.5842E-02*0.5956E-02* 1.983    *      1502*
+ *(RICHIN  )* 3.626    *0.3553E-03*0.3553E-03* 3.626    *        49*
+ *          *          *          *          *          *          *
+ *HOST   9. *          *          *          *          *          *
+ *ACCESS_R. * 1.014    *0.2185E-02*0.2212E-02* 1.027    *      1077*
+ *(RECEPT  )* 1.014    *0.2185E-02*0.2212E-02* 1.027    *      1077*
+ *          *          *          *          *          *          *
+ *HOST   9. *          *          *          *          *          *
+ *WINDOW  . *0.0000E+00*0.0000E+00*0.9953    * 1095.    *       454*
+ *(EMISSION)*0.0000E+00*0.0000E+00*0.8853    * 1086.    *       407*
+ *(RICHIN  )*0.0000E+00*0.0000E+00*0.1100    * 1170.    *        47*
+ *          *          *          *          *          *          *
+ *HOST   9. *          *          *          *          *          *
+ *TIMER   . * 544.9    *0.9997    * 12.94    * 7016.    *       916*
+ *(EMISSION)* 545.3    *0.9469    * 12.27    * 7023.    *       867*
+ *(RICHIN  )* 539.1    *0.5283E-01*0.6755    * 6893.    *        49*
+ *          *          *          *          *          *          *
+ *LINE_HR9. *          *          *          *          *          *
+ *R       . * 12.00    *0.0000E+00*0.3722E-01* 12.00    *      1551*
+ *(EMISSION)* 12.00    *0.0000E+00*0.3605E-01* 12.00    *      1502*
+ *(RICHIN  )* 12.00    *0.0000E+00*0.1176E-02* 12.00    *        49*
+ *          *          *          *          *          *          *
+ *HOST  10. *          *          *          *          *          *
+ *USER    . * 120.9    * 1.000    * 132.9    *0.1524E+05*      4133*
+ *(EMISSION)* 120.5    *0.9322    * 124.9    *0.1530E+05*      3865*
+ *(RICHIN  )* 126.6    *0.6784E-01* 7.992    *0.1436E+05*       268*
+ *          *          *          *          *          *          *
+ *HOST  10. *          *          *          *          *          *
+ *CONTROL . * 1337.    *0.9905    * 1853.    *0.1927E+06*       370*
+ *(EMISSION)* 1374.    *0.9094    * 1733.    *0.1957E+06*       331*
+ *(RICHIN  )* 1030.    *0.8116E-01* 120.1    *0.1671E+06*        39*
+ *          *          *          *          *          *          *
+ *HOST  10. *          *          *          *          *          *
+ *PROTOCOL. * 6.881    *0.3311E-01*0.3376E-01* 7.015    *      2406*
+ *(EMISSION)* 8.583    *0.2431E-01*0.2454E-01* 8.665    *      1416*
+ *(RECEPT  )* 4.000    *0.7608E-02*0.8022E-02* 4.218    *       951*
+ *(RICHIN  )* 15.33    *0.1196E-02*0.1196E-02* 15.33    *        39*
+ *          *          *          *          *          *          *
+ *HOST  10. *          *          *          *          *          *
+ *ACCESS_E. * 2.102    *0.6118E-02*0.6169E-02* 2.120    *      1455*
+ *(EMISSION)* 2.075    *0.5876E-02*0.5928E-02* 2.093    *      1416*
+ *(RICHIN  )* 3.098    *0.2416E-03*0.2416E-03* 3.098    *        39*
+ *          *          *          *          *          *          *
+ *HOST  10. *          *          *          *          *          *
+ *ACCESS_R. * 1.184    *0.2252E-02*0.2258E-02* 1.187    *       951*
+ *(RECEPT  )* 1.184    *0.2252E-02*0.2258E-02* 1.187    *       951*
+ *          *          *          *          *          *          *
+ *HOST  10. *          *          *          *          *          *
+ *WINDOW  . *0.0000E+00*0.0000E+00*0.9905    * 1434.    *       345*
+ *(EMISSION)*0.0000E+00*0.0000E+00*0.9094    * 1467.    *       310*
+ *(RICHIN  )*0.0000E+00*0.0000E+00*0.8116E-01* 1148.    *        35*
+ *          *          *          *          *          *          *
+ *HOST  10. *          *          *          *          *          *
+ *TIMER   . * 590.1    *0.9992    * 13.90    * 8140.    *       846*
+ *(EMISSION)* 596.2    *0.9631    * 13.31    * 8167.    *       807*
+ *(RICHIN  )* 463.1    *0.3612E-01*0.5903    * 7568.    *        39*
+ *          *          *          *          *          *          *
+ *LINE_H10. *          *          *          *          *          *
+ *R       . * 10.30    *0.0000E+00*0.2997E-01* 10.30    *      1455*
+ *(EMISSION)* 10.30    *0.0000E+00*0.2917E-01* 10.30    *      1416*
+ *(RICHIN  )* 10.30    *0.0000E+00*0.8034E-03* 10.30    *        39*
+ *          *          *          *          *          *          *
+ *HOST  11. *          *          *          *          *          *
+ *USER    . * 120.3    *0.9995    * 193.1    *0.2045E+05*      4154*
+ *(EMISSION)* 120.1    *0.9109    * 176.7    *0.2044E+05*      3792*
+ *(RICHIN  )* 122.4    *0.8859E-01* 16.40    *0.2057E+05*       362*
+ *          *          *          *          *          *          *
+ *HOST  11. *          *          *          *          *          *
+ *CONTROL . * 912.3    *0.9956    * 1801.    *0.2127E+06*       545*
+ *(EMISSION)* 920.3    *0.8994    * 1646.    *0.2135E+06*       488*
+ *(RICHIN  )* 844.0    *0.9622E-01* 154.3    *0.2054E+06*        57*
+ *          *          *          *          *          *          *
+ *HOST  11. *          *          *          *          *          *
+ *PROTOCOL. * 5.555    *0.3405E-01*0.3458E-01* 5.642    *      3065*
+ *(EMISSION)* 7.505    *0.2565E-01*0.2591E-01* 7.580    *      1709*
+ *(RECEPT  )* 2.592    *0.6734E-02*0.7001E-02* 2.695    *      1299*
+ *(RICHIN  )* 14.62    *0.1667E-02*0.1676E-02* 14.70    *        57*
+ *          *          *          *          *          *          *
+ *HOST  11. *          *          *          *          *          *
+ *ACCESS_E. * 1.937    *0.6842E-02*0.6874E-02* 1.946    *      1766*
+ *(EMISSION)* 1.891    *0.6462E-02*0.6494E-02* 1.900    *      1709*
+ *(RICHIN  )* 3.331    *0.3797E-03*0.3797E-03* 3.331    *        57*
+ *          *          *          *          *          *          *
+ *HOST  11. *          *          *          *          *          *
+ *ACCESS_R. *0.9719    *0.2525E-02*0.2552E-02*0.9824    *      1299*
+ *(RECEPT  )*0.9719    *0.2525E-02*0.2552E-02*0.9824    *      1299*
+ *          *          *          *          *          *          *
+ *HOST  11. *          *          *          *          *          *
+ *WINDOW  . *0.0000E+00*0.0000E+00*0.9956    * 945.3    *       526*
+ *(EMISSION)*0.0000E+00*0.0000E+00*0.8994    * 945.5    *       475*
+ *(RICHIN  )*0.0000E+00*0.0000E+00*0.9622E-01* 943.3    *        51*
+ *          *          *          *          *          *          *
+ *HOST  11. *          *          *          *          *          *
+ *TIMER   . * 508.4    *0.9996    * 14.94    * 7553.    *       982*
+ *(EMISSION)* 511.3    *0.9471    * 14.13    * 7579.    *       925*
+ *(RICHIN  )* 461.1    *0.5256E-01*0.8130    * 7131.    *        57*
+ *          *          *          *          *          *          *
+ *LINE_H11. *          *          *          *          *          *
+ *R       . * 9.600    *0.0000E+00*0.3391E-01* 9.600    *      1766*
+ *(EMISSION)* 9.600    *0.0000E+00*0.3281E-01* 9.600    *      1709*
+ *(RICHIN  )* 9.600    *0.0000E+00*0.1094E-02* 9.600    *        57*
+ *          *          *          *          *          *          *
+ *HOST  12. *          *          *          *          *          *
+ *USER    . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *HOST  12. *          *          *          *          *          *
+ *CONTROL . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *HOST  12. *          *          *          *          *          *
+ *PROTOCOL. * 8.684    *0.5210E-04*0.5210E-04* 8.684    *         3*
+ *(WEBAP   )* 8.684    *0.5210E-04*0.5210E-04* 8.684    *         3*
+ *          *          *          *          *          *          *
+ *HOST  12. *          *          *          *          *          *
+ *ACCESS_E. * 9.112    *0.3645E-04*0.3645E-04* 9.112    *         2*
+ *(WEBAP   )* 9.112    *0.3645E-04*0.3645E-04* 9.112    *         2*
+ *          *          *          *          *          *          *
+ *HOST  12. *          *          *          *          *          *
+ *ACCESS_R. *0.2450    *0.9802E-06*0.9802E-06*0.2450    *         2*
+ *(WEBAP   )*0.2450    *0.9802E-06*0.9802E-06*0.2450    *         2*
+ *          *          *          *          *          *          *
+ *HOST  12. *          *          *          *          *          *
+ *TIMER   . * 464.5    *0.9289E-03*0.9289E-03* 464.5    *         1*
+ *(WEBAP   )* 464.5    *0.9289E-03*0.9289E-03* 464.5    *         1*
+ *          *          *          *          *          *          *
+ *LINE_H12. *          *          *          *          *          *
+ *R       . * 8.500    *0.0000E+00*0.3400E-04* 8.500    *         2*
+ *(WEBAP   )* 8.500    *0.0000E+00*0.3400E-04* 8.500    *         2*
+ *          *          *          *          *          *          *
+ *HOST  13. *          *          *          *          *          *
+ *USER    . * 120.9    *0.9959    * 262.4    *0.2701E+05*      4117*
+ *(EMISSION)* 121.0    *0.8912    * 235.7    *0.2713E+05*      3682*
+ *(RICHIN  )* 120.3    *0.1047    * 26.68    *0.2604E+05*       435*
+ *          *          *          *          *          *          *
+ *HOST  13. *          *          *          *          *          *
+ *CONTROL . * 776.9    *0.9960    * 1759.    *0.2056E+06*       640*
+ *(EMISSION)* 752.6    *0.8596    * 1572.    *0.2087E+06*       570*
+ *(RICHIN  )* 974.0    *0.1364    * 187.5    *0.1796E+06*        70*
+ *          *          *          *          *          *          *
+ *HOST  13. *          *          *          *          *          *
+ *PROTOCOL. * 4.267    *0.3197E-01*0.3278E-01* 4.375    *      3746*
+ *(EMISSION)* 5.495    *0.2218E-01*0.2247E-01* 5.567    *      2018*
+ *(RECEPT  )* 2.522    *0.8362E-02*0.8873E-02* 2.676    *      1658*
+ *(RICHIN  )* 10.20    *0.1428E-02*0.1435E-02* 10.25    *        70*
+ *          *          *          *          *          *          *
+ *HOST  13. *          *          *          *          *          *
+ *ACCESS_E. * 1.720    *0.7184E-02*0.7254E-02* 1.737    *      2088*
+ *(EMISSION)* 1.671    *0.6744E-02*0.6807E-02* 1.686    *      2018*
+ *(RICHIN  )* 3.146    *0.4404E-03*0.4471E-03* 3.194    *        70*
+ *          *          *          *          *          *          *
+ *HOST  13. *          *          *          *          *          *
+ *ACCESS_R. * 1.041    *0.3452E-02*0.3480E-02* 1.050    *      1658*
+ *(RECEPT  )* 1.041    *0.3452E-02*0.3480E-02* 1.050    *      1658*
+ *          *          *          *          *          *          *
+ *HOST  13. *          *          *          *          *          *
+ *WINDOW  . *0.0000E+00*0.0000E+00*0.9960    * 794.2    *       626*
+ *(EMISSION)*0.0000E+00*0.0000E+00*0.8596    * 768.8    *       558*
+ *(RICHIN  )*0.0000E+00*0.0000E+00*0.1364    * 1003.    *        68*
+ *          *          *          *          *          *          *
+ *HOST  13. *          *          *          *          *          *
+ *TIMER   . * 477.8    *0.9997    * 11.95    * 5693.    *      1046*
+ *(EMISSION)* 478.7    *0.9364    * 11.20    * 5705.    *       978*
+ *(RICHIN  )* 465.2    *0.6326E-01*0.7575    * 5515.    *        68*
+ *          *          *          *          *          *          *
+ *LINE_H13. *          *          *          *          *          *
+ *R       . * 13.00    *0.0000E+00*0.5428E-01* 13.00    *      2087*
+ *(EMISSION)* 13.00    *0.0000E+00*0.5246E-01* 13.00    *      2017*
+ *(RICHIN  )* 13.00    *0.0000E+00*0.1820E-02* 13.00    *        70*
+ *          *          *          *          *          *          *
+ *HOST  14. *          *          *          *          *          *
+ *USER    . * 120.7    *0.9995    * 246.4    *0.2666E+05*      4140*
+ *(EMISSION)* 121.4    *0.9171    * 224.0    *0.2661E+05*      3776*
+ *(RICHIN  )* 113.3    *0.8246E-01* 22.47    *0.2720E+05*       364*
+ *          *          *          *          *          *          *
+ *HOST  14. *          *          *          *          *          *
+ *CONTROL . * 987.6    *0.9958    * 1823.    *0.2139E+06*       503*
+ *(EMISSION)* 971.7    *0.8826    * 1673.    *0.2170E+06*       453*
+ *(RICHIN  )* 1132.    *0.1132    * 149.6    *0.1865E+06*        50*
+ *          *          *          *          *          *          *
+ *HOST  14. *          *          *          *          *          *
+ *PROTOCOL. * 5.254    *0.3281E-01*0.3371E-01* 5.397    *      3123*
+ *(EMISSION)* 7.556    *0.2646E-01*0.2665E-01* 7.610    *      1751*
+ *(RECEPT  )* 1.956    *0.5172E-02*0.5878E-02* 2.223    *      1322*
+ *(RICHIN  )* 11.80    *0.1180E-02*0.1180E-02* 11.80    *        50*
+ *          *          *          *          *          *          *
+ *HOST  14. *          *          *          *          *          *
+ *ACCESS_E. * 1.941    *0.6993E-02*0.7111E-02* 1.974    *      1801*
+ *(EMISSION)* 1.911    *0.6694E-02*0.6812E-02* 1.945    *      1751*
+ *(RICHIN  )* 2.993    *0.2993E-03*0.2993E-03* 2.993    *        50*
+ *          *          *          *          *          *          *
+ *HOST  14. *          *          *          *          *          *
+ *ACCESS_R. * 1.105    *0.2920E-02*0.2975E-02* 1.125    *      1322*
+ *(RECEPT  )* 1.105    *0.2920E-02*0.2975E-02* 1.125    *      1322*
+ *          *          *          *          *          *          *
+ *HOST  14. *          *          *          *          *          *
+ *WINDOW  . *0.0000E+00*0.0000E+00*0.9958    * 1010.    *       492*
+ *(EMISSION)*0.0000E+00*0.0000E+00*0.8826    * 991.4    *       444*
+ *(RICHIN  )*0.0000E+00*0.0000E+00*0.1132    * 1179.    *        48*
+ *          *          *          *          *          *          *
+ *HOST  14. *          *          *          *          *          *
+ *TIMER   . * 520.3    *0.9997    * 10.95    * 5679.    *       960*
+ *(EMISSION)* 519.2    *0.9456    * 10.40    * 5688.    *       910*
+ *(RICHIN  )* 540.6    *0.5406E-01*0.5519    * 5519.    *        50*
+ *          *          *          *          *          *          *
+ *LINE_H14. *          *          *          *          *          *
+ *R       . * 11.30    *0.0000E+00*0.4070E-01* 11.30    *      1801*
+ *(EMISSION)* 11.30    *0.0000E+00*0.3957E-01* 11.30    *      1751*
+ *(RICHIN  )* 11.30    *0.0000E+00*0.1130E-02* 11.30    *        50*
+ *          *          *          *          *          *          *
+ *HOST  15. *          *          *          *          *          *
+ *USER    . * 123.0    *0.9997    * 347.6    *0.3800E+05*      4064*
+ *(EMISSION)* 122.8    *0.9080    * 317.4    *0.3811E+05*      3696*
+ *(RICHIN  )* 124.6    *0.9168E-01* 30.21    *0.3699E+05*       368*
+ *          *          *          *          *          *          *
+ *HOST  15. *          *          *          *          *          *
+ *CONTROL . * 967.2    *0.9962    * 1751.    *0.2054E+06*       515*
+ *(EMISSION)* 977.9    *0.8879    * 1594.    *0.2057E+06*       454*
+ *(RICHIN  )* 887.7    *0.1083    * 156.6    *0.2030E+06*        61*
+ *          *          *          *          *          *          *
+ *HOST  15. *          *          *          *          *          *
+ *PROTOCOL. * 4.859    *0.3052E-01*0.3125E-01* 4.975    *      3137*
+ *(EMISSION)* 6.710    *0.2348E-01*0.2357E-01* 6.736    *      1747*
+ *(RECEPT  )* 2.138    *0.5684E-02*0.6311E-02* 2.374    *      1329*
+ *(RICHIN  )* 11.12    *0.1356E-02*0.1365E-02* 11.19    *        61*
+ *          *          *          *          *          *          *
+ *HOST  15. *          *          *          *          *          *
+ *ACCESS_E. * 1.829    *0.6614E-02*0.6671E-02* 1.845    *      1808*
+ *(EMISSION)* 1.739    *0.6075E-02*0.6114E-02* 1.750    *      1747*
+ *(RICHIN  )* 4.412    *0.5383E-03*0.5570E-03* 4.566    *        61*
+ *          *          *          *          *          *          *
+ *HOST  15. *          *          *          *          *          *
+ *ACCESS_R. * 1.115    *0.2963E-02*0.2978E-02* 1.120    *      1329*
+ *(RECEPT  )* 1.115    *0.2963E-02*0.2978E-02* 1.120    *      1329*
+ *          *          *          *          *          *          *
+ *HOST  15. *          *          *          *          *          *
+ *WINDOW  . *0.0000E+00*0.0000E+00*0.9962    * 998.2    *       499*
+ *(EMISSION)*0.0000E+00*0.0000E+00*0.8879    * 1004.    *       442*
+ *(RICHIN  )*0.0000E+00*0.0000E+00*0.1083    * 950.0    *        57*
+ *          *          *          *          *          *          *
+ *HOST  15. *          *          *          *          *          *
+ *TIMER   . * 512.3    *0.9990    * 9.953    * 5085.    *       975*
+ *(EMISSION)* 517.8    *0.9465    * 9.341    * 5089.    *       914*
+ *(RICHIN  )* 429.6    *0.5241E-01*0.6122    * 5018.    *        61*
+ *          *          *          *          *          *          *
+ *LINE_H15. *          *          *          *          *          *
+ *R       . * 12.20    *0.0000E+00*0.4412E-01* 12.20    *      1808*
+ *(EMISSION)* 12.20    *0.0000E+00*0.4263E-01* 12.20    *      1747*
+ *(RICHIN  )* 12.20    *0.0000E+00*0.1488E-02* 12.20    *        61*
+ *          *          *          *          *          *          *
+ *HOST  16. *          *          *          *          *          *
+ *USER    . * 120.4    *0.9964    * 235.3    *0.2563E+05*      4137*
+ *(EMISSION)* 120.8    *0.9153    * 216.6    *0.2574E+05*      3788*
+ *(RICHIN  )* 116.2    *0.8107E-01* 18.66    *0.2447E+05*       349*
+ *          *          *          *          *          *          *
+ *HOST  16. *          *          *          *          *          *
+ *CONTROL . * 964.4    *0.9950    * 1791.    *0.1960E+06*       515*
+ *(EMISSION)* 990.9    *0.9311    * 1633.    *0.1950E+06*       469*
+ *(RICHIN  )* 694.3    *0.6388E-01* 158.1    *0.2068E+06*        46*
+ *          *          *          *          *          *          *
+ *HOST  16. *          *          *          *          *          *
+ *PROTOCOL. * 5.240    *0.3165E-01*0.3278E-01* 5.427    *      3020*
+ *(EMISSION)* 7.105    *0.2406E-01*0.2444E-01* 7.217    *      1693*
+ *(RECEPT  )* 2.474    *0.6339E-02*0.7035E-02* 2.746    *      1281*
+ *(RICHIN  )* 13.61    *0.1252E-02*0.1308E-02* 14.22    *        46*
+ *          *          *          *          *          *          *
+ *HOST  16. *          *          *          *          *          *
+ *ACCESS_E. * 1.926    *0.6697E-02*0.6811E-02* 1.958    *      1739*
+ *(EMISSION)* 1.870    *0.6331E-02*0.6428E-02* 1.899    *      1693*
+ *(RICHIN  )* 3.981    *0.3663E-03*0.3830E-03* 4.163    *        46*
+ *          *          *          *          *          *          *
+ *HOST  16. *          *          *          *          *          *
+ *ACCESS_R. * 1.047    *0.2683E-02*0.2716E-02* 1.060    *      1281*
+ *(RECEPT  )* 1.047    *0.2683E-02*0.2716E-02* 1.060    *      1281*
+ *          *          *          *          *          *          *
+ *HOST  16. *          *          *          *          *          *
+ *WINDOW  . *0.0000E+00*0.0000E+00*0.9950    * 1005.    *       494*
+ *(EMISSION)*0.0000E+00*0.0000E+00*0.9311    * 1024.    *       454*
+ *(RICHIN  )*0.0000E+00*0.0000E+00*0.6388E-01* 798.5    *        40*
+ *          *          *          *          *          *          *
+ *HOST  16. *          *          *          *          *          *
+ *TIMER   . * 529.1    *0.9996    * 14.93    * 7864.    *       943*
+ *(EMISSION)* 529.6    *0.9537    * 14.26    * 7884.    *       899*
+ *(RICHIN  )* 520.8    *0.4583E-01*0.6658    * 7461.    *        44*
+ *          *          *          *          *          *          *
+ *LINE_H16. *          *          *          *          *          *
+ *R       . * 14.70    *0.0000E+00*0.5113E-01* 14.70    *      1739*
+ *(EMISSION)* 14.70    *0.0000E+00*0.4977E-01* 14.70    *      1693*
+ *(RICHIN  )* 14.70    *0.0000E+00*0.1352E-02* 14.70    *        46*
+ *          *          *          *          *          *          *
+ *TERMINA1. *          *          *          *          *          *
+ *UTENTE  . * 119.2    * 1.000    * 1.000    * 119.2    *      4195*
+ *          *          *          *          *          *          *
+ *TERMINA1. *          *          *          *          *          *
+ *ACCESS_H. * 3.048    *0.3896E-02*0.3897E-02* 3.050    *       639*
+ *(RICHIN  )* 3.131    *0.1991E-02*0.1993E-02* 3.133    *       318*
+ *(RISPOSTA)* 2.966    *0.1904E-02*0.1904E-02* 2.966    *       321*
+ *          *          *          *          *          *          *
+ *TERMINA1. *          *          *          *          *          *
+ *CPU     . *0.4603E-02*0.4450E-04*0.4450E-04*0.4603E-02*      4834*
+ *(EMISSION)*0.4614E-02*0.3871E-04*0.3871E-04*0.4614E-02*      4195*
+ *(RICHIN  )*0.4312E-02*0.2742E-05*0.2742E-05*0.4312E-02*       318*
+ *(RISPOSTA)*0.4737E-02*0.3041E-05*0.3041E-05*0.4737E-02*       321*
+ *          *          *          *          *          *          *
+ *TERMINA1. *          *          *          *          *          *
+ *DISK    . *0.1488E-01*0.1439E-03*0.1439E-03*0.1488E-01*      4834*
+ *(EMISSION)*0.1469E-01*0.1233E-03*0.1233E-03*0.1469E-01*      4195*
+ *(RICHIN  )*0.1647E-01*0.1047E-04*0.1047E-04*0.1647E-01*       318*
+ *(RISPOSTA)*0.1573E-01*0.1010E-04*0.1010E-04*0.1573E-01*       321*
+ *          *          *          *          *          *          *
+ *LINE_TH1. *          *          *          *          *          *
+ *QH      . * 1.200    *0.0000E+00*0.1083E-01* 1.200    *      4513*
+ *(EMISSION)* 1.200    *0.0000E+00*0.1007E-01* 1.200    *      4195*
+ *(RICHIN  )* 1.200    *0.0000E+00*0.7632E-03* 1.200    *       318*
+ *          *          *          *          *          *          *
+ *LINE_TH1. *          *          *          *          *          *
+ *HQ      . * 1.200    *0.0000E+00*0.1534E-02* 1.200    *       639*
+ *(RICHIN  )* 1.200    *0.0000E+00*0.7632E-03* 1.200    *       318*
+ *(RISPOSTA)* 1.200    *0.0000E+00*0.7704E-03* 1.200    *       321*
+ *          *          *          *          *          *          *
+ *TERMINA2. *          *          *          *          *          *
+ *UTENTE  . * 123.0    * 1.000    * 1.000    * 123.0    *      4065*
+ *          *          *          *          *          *          *
+ *TERMINA2. *          *          *          *          *          *
+ *ACCESS_H. * 2.794    *0.3152E-02*0.3166E-02* 2.807    *       564*
+ *(RICHIN  )* 2.673    *0.1390E-02*0.1395E-02* 2.683    *       260*
+ *(RISPOSTA)* 2.898    *0.1762E-02*0.1771E-02* 2.913    *       304*
+ *          *          *          *          *          *          *
+ *TERMINA2. *          *          *          *          *          *
+ *CPU     . *0.4569E-02*0.4230E-04*0.4230E-04*0.4569E-02*      4629*
+ *(EMISSION)*0.4560E-02*0.3707E-04*0.3707E-04*0.4560E-02*      4065*
+ *(RICHIN  )*0.4622E-02*0.2403E-05*0.2403E-05*0.4622E-02*       260*
+ *(RISPOSTA)*0.4647E-02*0.2825E-05*0.2825E-05*0.4647E-02*       304*
+ *          *          *          *          *          *          *
+ *TERMINA2. *          *          *          *          *          *
+ *DISK    . *0.1513E-01*0.1401E-03*0.1401E-03*0.1513E-01*      4629*
+ *(EMISSION)*0.1521E-01*0.1237E-03*0.1237E-03*0.1521E-01*      4065*
+ *(RICHIN  )*0.1511E-01*0.7856E-05*0.7856E-05*0.1511E-01*       260*
+ *(RISPOSTA)*0.1410E-01*0.8573E-05*0.8573E-05*0.1410E-01*       304*
+ *          *          *          *          *          *          *
+ *LINE_TH2. *          *          *          *          *          *
+ *QH      . * 1.300    *0.0000E+00*0.1125E-01* 1.300    *      4325*
+ *(EMISSION)* 1.300    *0.0000E+00*0.1057E-01* 1.300    *      4065*
+ *(RICHIN  )* 1.300    *0.0000E+00*0.6760E-03* 1.300    *       260*
+ *          *          *          *          *          *          *
+ *LINE_TH2. *          *          *          *          *          *
+ *HQ      . * 1.300    *0.0000E+00*0.1466E-02* 1.300    *       564*
+ *(RICHIN  )* 1.300    *0.0000E+00*0.6760E-03* 1.300    *       260*
+ *(RISPOSTA)* 1.300    *0.0000E+00*0.7904E-03* 1.300    *       304*
+ *          *          *          *          *          *          *
+ *TERMINA3. *          *          *          *          *          *
+ *UTENTE  . * 117.1    * 1.000    * 1.000    * 117.1    *      4271*
+ *          *          *          *          *          *          *
+ *TERMINA3. *          *          *          *          *          *
+ *ACCESS_H. * 3.058    *0.3620E-02*0.3620E-02* 3.058    *       592*
+ *(RICHIN  )* 2.950    *0.1623E-02*0.1623E-02* 2.950    *       275*
+ *(RISPOSTA)* 3.151    *0.1998E-02*0.1998E-02* 3.151    *       317*
+ *          *          *          *          *          *          *
+ *TERMINA3. *          *          *          *          *          *
+ *CPU     . *0.4475E-02*0.4353E-04*0.4353E-04*0.4475E-02*      4863*
+ *(EMISSION)*0.4489E-02*0.3835E-04*0.3835E-04*0.4489E-02*      4271*
+ *(RICHIN  )*0.4347E-02*0.2391E-05*0.2391E-05*0.4347E-02*       275*
+ *(RISPOSTA)*0.4403E-02*0.2792E-05*0.2792E-05*0.4403E-02*       317*
+ *          *          *          *          *          *          *
+ *TERMINA3. *          *          *          *          *          *
+ *DISK    . *0.1535E-01*0.1493E-03*0.1494E-03*0.1536E-01*      4863*
+ *(EMISSION)*0.1537E-01*0.1312E-03*0.1312E-03*0.1537E-01*      4271*
+ *(RICHIN  )*0.1601E-01*0.8806E-05*0.8806E-05*0.1601E-01*       275*
+ *(RISPOSTA)*0.1461E-01*0.9262E-05*0.9300E-05*0.1467E-01*       317*
+ *          *          *          *          *          *          *
+ *LINE_TH3. *          *          *          *          *          *
+ *QH      . * 1.260    *0.0000E+00*0.1146E-01* 1.260    *      4546*
+ *(EMISSION)* 1.260    *0.0000E+00*0.1076E-01* 1.260    *      4271*
+ *(RICHIN  )* 1.260    *0.0000E+00*0.6930E-03* 1.260    *       275*
+ *          *          *          *          *          *          *
+ *LINE_TH3. *          *          *          *          *          *
+ *HQ      . * 1.260    *0.0000E+00*0.1492E-02* 1.260    *       592*
+ *(RICHIN  )* 1.260    *0.0000E+00*0.6930E-03* 1.260    *       275*
+ *(RISPOSTA)* 1.260    *0.0000E+00*0.7988E-03* 1.260    *       317*
+ *          *          *          *          *          *          *
+ *TERMINA4. *          *          *          *          *          *
+ *UTENTE  . * 116.3    * 1.000    * 1.000    * 116.3    *      4297*
+ *          *          *          *          *          *          *
+ *TERMINA4. *          *          *          *          *          *
+ *ACCESS_H. * 2.863    *0.3882E-02*0.3943E-02* 2.908    *       678*
+ *(RICHIN  )* 2.825    *0.2011E-02*0.2037E-02* 2.861    *       356*
+ *(RISPOSTA)* 2.904    *0.1870E-02*0.1907E-02* 2.960    *       322*
+ *          *          *          *          *          *          *
+ *TERMINA4. *          *          *          *          *          *
+ *CPU     . *0.4543E-02*0.4520E-04*0.4520E-04*0.4543E-02*      4975*
+ *(EMISSION)*0.4549E-02*0.3910E-04*0.3910E-04*0.4549E-02*      4297*
+ *(RICHIN  )*0.4499E-02*0.3204E-05*0.3204E-05*0.4499E-02*       356*
+ *(RISPOSTA)*0.4500E-02*0.2898E-05*0.2898E-05*0.4500E-02*       322*
+ *          *          *          *          *          *          *
+ *TERMINA4. *          *          *          *          *          *
+ *DISK    . *0.1505E-01*0.1498E-03*0.1498E-03*0.1506E-01*      4975*
+ *(EMISSION)*0.1505E-01*0.1294E-03*0.1294E-03*0.1506E-01*      4297*
+ *(RICHIN  )*0.1575E-01*0.1121E-04*0.1121E-04*0.1575E-01*       356*
+ *(RISPOSTA)*0.1426E-01*0.9186E-05*0.9186E-05*0.1426E-01*       322*
+ *          *          *          *          *          *          *
+ *LINE_TH4. *          *          *          *          *          *
+ *QH      . * 1.000    *0.0000E+00*0.9306E-02* 1.000    *      4653*
+ *(EMISSION)* 1.000    *0.0000E+00*0.8594E-02* 1.000    *      4297*
+ *(RICHIN  )* 1.000    *0.0000E+00*0.7120E-03* 1.000    *       356*
+ *          *          *          *          *          *          *
+ *LINE_TH4. *          *          *          *          *          *
+ *HQ      . * 1.000    *0.0000E+00*0.1356E-02* 1.000    *       678*
+ *(RICHIN  )* 1.000    *0.0000E+00*0.7120E-03* 1.000    *       356*
+ *(RISPOSTA)* 1.000    *0.0000E+00*0.6440E-03* 1.000    *       322*
+ *          *          *          *          *          *          *
+ *TERMINA5. *          *          *          *          *          *
+ *UTENTE  . * 121.8    * 1.000    * 1.000    * 121.8    *      4104*
+ *          *          *          *          *          *          *
+ *TERMINA5. *          *          *          *          *          *
+ *ACCESS_H. * 3.010    *0.5478E-02*0.5599E-02* 3.076    *       910*
+ *(RICHIN  )* 3.119    *0.2876E-02*0.2929E-02* 3.176    *       461*
+ *(RISPOSTA)* 2.898    *0.2603E-02*0.2670E-02* 2.973    *       449*
+ *          *          *          *          *          *          *
+ *TERMINA5. *          *          *          *          *          *
+ *CPU     . *0.4459E-02*0.4472E-04*0.4472E-04*0.4459E-02*      5014*
+ *(EMISSION)*0.4461E-02*0.3661E-04*0.3661E-04*0.4461E-02*      4104*
+ *(RICHIN  )*0.4606E-02*0.4247E-05*0.4247E-05*0.4606E-02*       461*
+ *(RISPOSTA)*0.4296E-02*0.3858E-05*0.3858E-05*0.4296E-02*       449*
+ *          *          *          *          *          *          *
+ *TERMINA5. *          *          *          *          *          *
+ *DISK    . *0.1505E-01*0.1509E-03*0.1509E-03*0.1505E-01*      5014*
+ *(EMISSION)*0.1502E-01*0.1233E-03*0.1233E-03*0.1503E-01*      4104*
+ *(RICHIN  )*0.1431E-01*0.1319E-04*0.1319E-04*0.1431E-01*       461*
+ *(RISPOSTA)*0.1604E-01*0.1440E-04*0.1440E-04*0.1604E-01*       449*
+ *          *          *          *          *          *          *
+ *LINE_TH5. *          *          *          *          *          *
+ *QH      . * 1.100    *0.0000E+00*0.1004E-01* 1.100    *      4565*
+ *(EMISSION)* 1.100    *0.0000E+00*0.9029E-02* 1.100    *      4104*
+ *(RICHIN  )* 1.100    *0.0000E+00*0.1014E-02* 1.100    *       461*
+ *          *          *          *          *          *          *
+ *LINE_TH5. *          *          *          *          *          *
+ *HQ      . * 1.100    *0.0000E+00*0.2002E-02* 1.100    *       910*
+ *(RICHIN  )* 1.100    *0.0000E+00*0.1014E-02* 1.100    *       461*
+ *(RISPOSTA)* 1.100    *0.0000E+00*0.9878E-03* 1.100    *       449*
+ *          *          *          *          *          *          *
+ *TERMINA6. *          *          *          *          *          *
+ *UTENTE  . * 121.0    * 1.000    * 1.000    * 121.0    *      4132*
+ *          *          *          *          *          *          *
+ *TERMINA6. *          *          *          *          *          *
+ *ACCESS_H. * 2.843    *0.4901E-02*0.4918E-02* 2.852    *       862*
+ *(RICHIN  )* 2.871    *0.2596E-02*0.2604E-02* 2.880    *       452*
+ *(RISPOSTA)* 2.812    *0.2306E-02*0.2314E-02* 2.822    *       410*
+ *          *          *          *          *          *          *
+ *TERMINA6. *          *          *          *          *          *
+ *CPU     . *0.4573E-02*0.4567E-04*0.4567E-04*0.4573E-02*      4994*
+ *(EMISSION)*0.4563E-02*0.3771E-04*0.3771E-04*0.4563E-02*      4132*
+ *(RICHIN  )*0.4678E-02*0.4229E-05*0.4229E-05*0.4678E-02*       452*
+ *(RISPOSTA)*0.4557E-02*0.3736E-05*0.3736E-05*0.4557E-02*       410*
+ *          *          *          *          *          *          *
+ *TERMINA6. *          *          *          *          *          *
+ *DISK    . *0.1517E-01*0.1515E-03*0.1515E-03*0.1517E-01*      4994*
+ *(EMISSION)*0.1526E-01*0.1261E-03*0.1262E-03*0.1527E-01*      4132*
+ *(RICHIN  )*0.1448E-01*0.1309E-04*0.1309E-04*0.1448E-01*       452*
+ *(RISPOSTA)*0.1494E-01*0.1225E-04*0.1225E-04*0.1494E-01*       410*
+ *          *          *          *          *          *          *
+ *LINE_TH6. *          *          *          *          *          *
+ *QH      . * 1.200    *0.0000E+00*0.1100E-01* 1.200    *      4584*
+ *(EMISSION)* 1.200    *0.0000E+00*0.9917E-02* 1.200    *      4132*
+ *(RICHIN  )* 1.200    *0.0000E+00*0.1085E-02* 1.200    *       452*
+ *          *          *          *          *          *          *
+ *LINE_TH6. *          *          *          *          *          *
+ *HQ      . * 1.200    *0.0000E+00*0.2069E-02* 1.200    *       862*
+ *(RICHIN  )* 1.200    *0.0000E+00*0.1085E-02* 1.200    *       452*
+ *(RISPOSTA)* 1.200    *0.0000E+00*0.9840E-03* 1.200    *       410*
+ *          *          *          *          *          *          *
+ *TERMINA7. *          *          *          *          *          *
+ *UTENTE  . * 119.9    * 1.000    * 1.000    * 119.9    *      4171*
+ *          *          *          *          *          *          *
+ *TERMINA7. *          *          *          *          *          *
+ *ACCESS_H. * 3.100    *0.5604E-02*0.5628E-02* 3.113    *       904*
+ *(RICHIN  )* 3.297    *0.3080E-02*0.3091E-02* 3.309    *       467*
+ *(RISPOSTA)* 2.889    *0.2525E-02*0.2537E-02* 2.903    *       437*
+ *          *          *          *          *          *          *
+ *TERMINA7. *          *          *          *          *          *
+ *CPU     . *0.4558E-02*0.4626E-04*0.4626E-04*0.4558E-02*      5075*
+ *(EMISSION)*0.4575E-02*0.3816E-04*0.3816E-04*0.4575E-02*      4171*
+ *(RICHIN  )*0.4358E-02*0.4070E-05*0.4070E-05*0.4358E-02*       467*
+ *(RISPOSTA)*0.4608E-02*0.4027E-05*0.4027E-05*0.4608E-02*       437*
+ *          *          *          *          *          *          *
+ *TERMINA7. *          *          *          *          *          *
+ *DISK    . *0.1531E-01*0.1554E-03*0.1554E-03*0.1531E-01*      5075*
+ *(EMISSION)*0.1537E-01*0.1282E-03*0.1282E-03*0.1537E-01*      4171*
+ *(RICHIN  )*0.1487E-01*0.1389E-04*0.1389E-04*0.1487E-01*       467*
+ *(RISPOSTA)*0.1518E-01*0.1327E-04*0.1327E-04*0.1518E-01*       437*
+ *          *          *          *          *          *          *
+ *LINE_TH7. *          *          *          *          *          *
+ *QH      . * 1.300    *0.0000E+00*0.1206E-01* 1.300    *      4638*
+ *(EMISSION)* 1.300    *0.0000E+00*0.1084E-01* 1.300    *      4171*
+ *(RICHIN  )* 1.300    *0.0000E+00*0.1214E-02* 1.300    *       467*
+ *          *          *          *          *          *          *
+ *LINE_TH7. *          *          *          *          *          *
+ *HQ      . * 1.300    *0.0000E+00*0.2350E-02* 1.300    *       904*
+ *(RICHIN  )* 1.300    *0.0000E+00*0.1214E-02* 1.300    *       467*
+ *(RISPOSTA)* 1.300    *0.0000E+00*0.1136E-02* 1.300    *       437*
+ *          *          *          *          *          *          *
+ *TERMINA8. *          *          *          *          *          *
+ *UTENTE  . *0.5000E+06* 1.000    * 1.000    *0.5000E+06*         1*
+ *          *          *          *          *          *          *
+ *TERMINA8. *          *          *          *          *          *
+ *ACCESS_H. *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *TERMINA8. *          *          *          *          *          *
+ *CPU     . *0.8855E-02*0.5490E-06*0.5490E-06*0.8855E-02*        31*
+ *(WEBAP   )*0.8855E-02*0.5490E-06*0.5490E-06*0.8855E-02*        31*
+ *          *          *          *          *          *          *
+ *TERMINA8. *          *          *          *          *          *
+ *DISK    . *0.1452E-01*0.9000E-06*0.9000E-06*0.1452E-01*        31*
+ *(WEBAP   )*0.1452E-01*0.9000E-06*0.9000E-06*0.1452E-01*        31*
+ *          *          *          *          *          *          *
+ *TERMINA8. *          *          *          *          *          *
+ *SCH     . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*       124*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*       124*
+ *          *          *          *          *          *          *
+ *TERMINA8. *          *          *          *          *          *
+ *TERM    . * 5.591    *0.3466E-03*0.3466E-03* 5.591    *        31*
+ *(WEBAP   )* 5.591    *0.3466E-03*0.3466E-03* 5.591    *        31*
+ *          *          *          *          *          *          *
+ *LINE_TH8. *          *          *          *          *          *
+ *QH      . * 1.500    *0.0000E+00*0.3000E-05* 1.500    *         1*
+ *(WEBAP   )* 1.500    *0.0000E+00*0.3000E-05* 1.500    *         1*
+ *          *          *          *          *          *          *
+ *LINE_TH8. *          *          *          *          *          *
+ *HQ      . * 1.500    *0.0000E+00*0.3000E-05* 1.500    *         1*
+ *(WEBAP   )* 1.500    *0.0000E+00*0.3000E-05* 1.500    *         1*
+ *          *          *          *          *          *          *
+ *TERMINA9. *          *          *          *          *          *
+ *UTENTE  . * 123.3    * 1.000    * 1.000    * 123.3    *      4053*
+ *          *          *          *          *          *          *
+ *TERMINA9. *          *          *          *          *          *
+ *ACCESS_H. * 2.780    *0.3458E-02*0.3484E-02* 2.801    *       622*
+ *(RICHIN  )* 2.792    *0.1781E-02*0.1808E-02* 2.834    *       319*
+ *(RISPOSTA)* 2.766    *0.1676E-02*0.1676E-02* 2.766    *       303*
+ *          *          *          *          *          *          *
+ *TERMINA9. *          *          *          *          *          *
+ *CPU     . *0.4650E-02*0.4348E-04*0.4348E-04*0.4650E-02*      4675*
+ *(EMISSION)*0.4648E-02*0.3768E-04*0.3768E-04*0.4648E-02*      4053*
+ *(RICHIN  )*0.4867E-02*0.3105E-05*0.3105E-05*0.4867E-02*       319*
+ *(RISPOSTA)*0.4451E-02*0.2697E-05*0.2697E-05*0.4451E-02*       303*
+ *          *          *          *          *          *          *
+ *TERMINA9. *          *          *          *          *          *
+ *DISK    . *0.1521E-01*0.1422E-03*0.1422E-03*0.1521E-01*      4675*
+ *(EMISSION)*0.1524E-01*0.1235E-03*0.1235E-03*0.1524E-01*      4053*
+ *(RICHIN  )*0.1454E-01*0.9274E-05*0.9274E-05*0.1454E-01*       319*
+ *(RISPOSTA)*0.1552E-01*0.9403E-05*0.9403E-05*0.1552E-01*       303*
+ *          *          *          *          *          *          *
+ *LINE_TH9. *          *          *          *          *          *
+ *QH      . * 1.200    *0.0000E+00*0.1049E-01* 1.200    *      4372*
+ *(EMISSION)* 1.200    *0.0000E+00*0.9727E-02* 1.200    *      4053*
+ *(RICHIN  )* 1.200    *0.0000E+00*0.7656E-03* 1.200    *       319*
+ *          *          *          *          *          *          *
+ *LINE_TH9. *          *          *          *          *          *
+ *HQ      . * 1.200    *0.0000E+00*0.1493E-02* 1.200    *       622*
+ *(RICHIN  )* 1.200    *0.0000E+00*0.7656E-03* 1.200    *       319*
+ *(RISPOSTA)* 1.200    *0.0000E+00*0.7272E-03* 1.200    *       303*
+ *          *          *          *          *          *          *
+ *TERMIN10. *          *          *          *          *          *
+ *UTENTE  . * 121.8    * 1.000    * 1.000    * 121.8    *      4103*
+ *          *          *          *          *          *          *
+ *TERMIN10. *          *          *          *          *          *
+ *ACCESS_H. * 2.755    *0.3278E-02*0.3278E-02* 2.755    *       595*
+ *(RICHIN  )* 2.780    *0.1568E-02*0.1568E-02* 2.780    *       282*
+ *(RISPOSTA)* 2.732    *0.1710E-02*0.1710E-02* 2.732    *       313*
+ *          *          *          *          *          *          *
+ *TERMIN10. *          *          *          *          *          *
+ *CPU     . *0.4515E-02*0.4243E-04*0.4243E-04*0.4515E-02*      4698*
+ *(EMISSION)*0.4498E-02*0.3691E-04*0.3691E-04*0.4498E-02*      4103*
+ *(RICHIN  )*0.4668E-02*0.2633E-05*0.2633E-05*0.4668E-02*       282*
+ *(RISPOSTA)*0.4604E-02*0.2882E-05*0.2882E-05*0.4604E-02*       313*
+ *          *          *          *          *          *          *
+ *TERMIN10. *          *          *          *          *          *
+ *DISK    . *0.1540E-01*0.1447E-03*0.1447E-03*0.1540E-01*      4698*
+ *(EMISSION)*0.1540E-01*0.1264E-03*0.1264E-03*0.1540E-01*      4103*
+ *(RICHIN  )*0.1557E-01*0.8782E-05*0.8782E-05*0.1557E-01*       282*
+ *(RISPOSTA)*0.1528E-01*0.9567E-05*0.9567E-05*0.1528E-01*       313*
+ *          *          *          *          *          *          *
+ *LINE_T10. *          *          *          *          *          *
+ *QH      . * 1.030    *0.0000E+00*0.9033E-02* 1.030    *      4385*
+ *(EMISSION)* 1.030    *0.0000E+00*0.8452E-02* 1.030    *      4103*
+ *(RICHIN  )* 1.030    *0.0000E+00*0.5809E-03* 1.030    *       282*
+ *          *          *          *          *          *          *
+ *LINE_T10. *          *          *          *          *          *
+ *HQ      . * 1.030    *0.0000E+00*0.1226E-02* 1.030    *       595*
+ *(RICHIN  )* 1.030    *0.0000E+00*0.5809E-03* 1.030    *       282*
+ *(RISPOSTA)* 1.030    *0.0000E+00*0.6448E-03* 1.030    *       313*
+ *          *          *          *          *          *          *
+ *TERMIN11. *          *          *          *          *          *
+ *UTENTE  . * 118.9    * 1.000    * 1.000    * 118.9    *      4204*
+ *          *          *          *          *          *          *
+ *TERMIN11. *          *          *          *          *          *
+ *ACCESS_H. * 2.898    *0.4457E-02*0.4458E-02* 2.899    *       769*
+ *(RICHIN  )* 2.749    *0.2161E-02*0.2161E-02* 2.749    *       393*
+ *(RISPOSTA)* 3.053    *0.2296E-02*0.2297E-02* 3.054    *       376*
+ *          *          *          *          *          *          *
+ *TERMIN11. *          *          *          *          *          *
+ *CPU     . *0.4537E-02*0.4513E-04*0.4513E-04*0.4537E-02*      4973*
+ *(EMISSION)*0.4507E-02*0.3789E-04*0.3789E-04*0.4507E-02*      4204*
+ *(RICHIN  )*0.4692E-02*0.3688E-05*0.3688E-05*0.4692E-02*       393*
+ *(RISPOSTA)*0.4714E-02*0.3545E-05*0.3545E-05*0.4714E-02*       376*
+ *          *          *          *          *          *          *
+ *TERMIN11. *          *          *          *          *          *
+ *DISK    . *0.1500E-01*0.1491E-03*0.1491E-03*0.1500E-01*      4973*
+ *(EMISSION)*0.1502E-01*0.1263E-03*0.1263E-03*0.1502E-01*      4204*
+ *(RICHIN  )*0.1534E-01*0.1206E-04*0.1206E-04*0.1534E-01*       393*
+ *(RISPOSTA)*0.1441E-01*0.1083E-04*0.1083E-04*0.1441E-01*       376*
+ *          *          *          *          *          *          *
+ *LINE_T11. *          *          *          *          *          *
+ *QH      . *0.9600    *0.0000E+00*0.8826E-02*0.9600    *      4597*
+ *(EMISSION)*0.9600    *0.0000E+00*0.8072E-02*0.9600    *      4204*
+ *(RICHIN  )*0.9600    *0.0000E+00*0.7546E-03*0.9600    *       393*
+ *          *          *          *          *          *          *
+ *LINE_T11. *          *          *          *          *          *
+ *HQ      . *0.9600    *0.0000E+00*0.1476E-02*0.9600    *       769*
+ *(RICHIN  )*0.9600    *0.0000E+00*0.7546E-03*0.9600    *       393*
+ *(RISPOSTA)*0.9600    *0.0000E+00*0.7219E-03*0.9600    *       376*
+ *          *          *          *          *          *          *
+ *TERMIN12. *          *          *          *          *          *
+ *UTENTE  . *0.5000E+06* 1.000    * 1.000    *0.5000E+06*         1*
+ *          *          *          *          *          *          *
+ *TERMIN12. *          *          *          *          *          *
+ *ACCESS_H. *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *TERMIN12. *          *          *          *          *          *
+ *CPU     . *0.1118E-01*0.6930E-06*0.6930E-06*0.1118E-01*        31*
+ *(WEBAP   )*0.1118E-01*0.6930E-06*0.6930E-06*0.1118E-01*        31*
+ *          *          *          *          *          *          *
+ *TERMIN12. *          *          *          *          *          *
+ *DISK    . *0.1500E-01*0.9300E-06*0.9300E-06*0.1500E-01*        31*
+ *(WEBAP   )*0.1500E-01*0.9300E-06*0.9300E-06*0.1500E-01*        31*
+ *          *          *          *          *          *          *
+ *TERMIN12. *          *          *          *          *          *
+ *SCH     . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*       124*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*       124*
+ *          *          *          *          *          *          *
+ *TERMIN12. *          *          *          *          *          *
+ *TERM    . * 4.613    *0.2860E-03*0.2860E-03* 4.613    *        31*
+ *(WEBAP   )* 4.613    *0.2860E-03*0.2860E-03* 4.613    *        31*
+ *          *          *          *          *          *          *
+ *LINE_T12. *          *          *          *          *          *
+ *QH      . *0.8500    *0.0000E+00*0.1700E-05*0.8500    *         1*
+ *(WEBAP   )*0.8500    *0.0000E+00*0.1700E-05*0.8500    *         1*
+ *          *          *          *          *          *          *
+ *LINE_T12. *          *          *          *          *          *
+ *HQ      . *0.8500    *0.0000E+00*0.1700E-05*0.8500    *         1*
+ *(WEBAP   )*0.8500    *0.0000E+00*0.1700E-05*0.8500    *         1*
+ *          *          *          *          *          *          *
+ *TERMIN13. *          *          *          *          *          *
+ *UTENTE  . * 117.4    * 1.000    * 1.000    * 117.4    *      4256*
+ *          *          *          *          *          *          *
+ *TERMIN13. *          *          *          *          *          *
+ *ACCESS_H. * 3.079    *0.6343E-02*0.6343E-02* 3.079    *      1030*
+ *(RICHIN  )* 3.008    *0.3014E-02*0.3014E-02* 3.008    *       501*
+ *(RISPOSTA)* 3.146    *0.3329E-02*0.3329E-02* 3.146    *       529*
+ *          *          *          *          *          *          *
+ *TERMIN13. *          *          *          *          *          *
+ *CPU     . *0.4502E-02*0.4760E-04*0.4762E-04*0.4505E-02*      5286*
+ *(EMISSION)*0.4498E-02*0.3829E-04*0.3831E-04*0.4501E-02*      4256*
+ *(RICHIN  )*0.4505E-02*0.4514E-05*0.4514E-05*0.4505E-02*       501*
+ *(RISPOSTA)*0.4535E-02*0.4798E-05*0.4798E-05*0.4535E-02*       529*
+ *          *          *          *          *          *          *
+ *TERMIN13. *          *          *          *          *          *
+ *DISK    . *0.1470E-01*0.1554E-03*0.1555E-03*0.1470E-01*      5286*
+ *(EMISSION)*0.1451E-01*0.1235E-03*0.1236E-03*0.1452E-01*      4256*
+ *(RICHIN  )*0.1550E-01*0.1553E-04*0.1553E-04*0.1550E-01*       501*
+ *(RISPOSTA)*0.1546E-01*0.1636E-04*0.1636E-04*0.1546E-01*       529*
+ *          *          *          *          *          *          *
+ *LINE_T13. *          *          *          *          *          *
+ *QH      . * 1.300    *0.0000E+00*0.1237E-01* 1.300    *      4757*
+ *(EMISSION)* 1.300    *0.0000E+00*0.1107E-01* 1.300    *      4256*
+ *(RICHIN  )* 1.300    *0.0000E+00*0.1303E-02* 1.300    *       501*
+ *          *          *          *          *          *          *
+ *LINE_T13. *          *          *          *          *          *
+ *HQ      . * 1.300    *0.0000E+00*0.2678E-02* 1.300    *      1030*
+ *(RICHIN  )* 1.300    *0.0000E+00*0.1303E-02* 1.300    *       501*
+ *(RISPOSTA)* 1.300    *0.0000E+00*0.1375E-02* 1.300    *       529*
+ *          *          *          *          *          *          *
+ *TERMIN14. *          *          *          *          *          *
+ *UTENTE  . * 119.0    * 1.000    * 1.000    * 119.0    *      4202*
+ *          *          *          *          *          *          *
+ *TERMIN14. *          *          *          *          *          *
+ *ACCESS_H. * 2.835    *0.4706E-02*0.4720E-02* 2.843    *       830*
+ *(RICHIN  )* 2.695    *0.2248E-02*0.2248E-02* 2.695    *       417*
+ *(RISPOSTA)* 2.976    *0.2458E-02*0.2472E-02* 2.993    *       413*
+ *          *          *          *          *          *          *
+ *TERMIN14. *          *          *          *          *          *
+ *CPU     . *0.4514E-02*0.4543E-04*0.4543E-04*0.4514E-02*      5032*
+ *(EMISSION)*0.4487E-02*0.3771E-04*0.3771E-04*0.4487E-02*      4202*
+ *(RICHIN  )*0.4799E-02*0.4003E-05*0.4003E-05*0.4799E-02*       417*
+ *(RISPOSTA)*0.4507E-02*0.3722E-05*0.3722E-05*0.4507E-02*       413*
+ *          *          *          *          *          *          *
+ *TERMIN14. *          *          *          *          *          *
+ *DISK    . *0.1552E-01*0.1562E-03*0.1562E-03*0.1552E-01*      5032*
+ *(EMISSION)*0.1544E-01*0.1297E-03*0.1297E-03*0.1544E-01*      4202*
+ *(RICHIN  )*0.1494E-01*0.1246E-04*0.1246E-04*0.1494E-01*       417*
+ *(RISPOSTA)*0.1695E-01*0.1400E-04*0.1400E-04*0.1695E-01*       413*
+ *          *          *          *          *          *          *
+ *LINE_T14. *          *          *          *          *          *
+ *QH      . * 1.130    *0.0000E+00*0.1044E-01* 1.130    *      4619*
+ *(EMISSION)* 1.130    *0.0000E+00*0.9497E-02* 1.130    *      4202*
+ *(RICHIN  )* 1.130    *0.0000E+00*0.9424E-03* 1.130    *       417*
+ *          *          *          *          *          *          *
+ *LINE_T14. *          *          *          *          *          *
+ *HQ      . * 1.130    *0.0000E+00*0.1876E-02* 1.130    *       830*
+ *(RICHIN  )* 1.130    *0.0000E+00*0.9424E-03* 1.130    *       417*
+ *(RISPOSTA)* 1.130    *0.0000E+00*0.9334E-03* 1.130    *       413*
+ *          *          *          *          *          *          *
+ *TERMIN15. *          *          *          *          *          *
+ *UTENTE  . * 117.7    * 1.000    * 1.000    * 117.7    *      4247*
+ *          *          *          *          *          *          *
+ *TERMIN15. *          *          *          *          *          *
+ *ACCESS_H. * 2.794    *0.4605E-02*0.4613E-02* 2.799    *       824*
+ *(RICHIN  )* 2.813    *0.2346E-02*0.2347E-02* 2.814    *       417*
+ *(RISPOSTA)* 2.775    *0.2259E-02*0.2267E-02* 2.784    *       407*
+ *          *          *          *          *          *          *
+ *TERMIN15. *          *          *          *          *          *
+ *CPU     . *0.4576E-02*0.4641E-04*0.4641E-04*0.4576E-02*      5071*
+ *(EMISSION)*0.4591E-02*0.3900E-04*0.3900E-04*0.4591E-02*      4247*
+ *(RICHIN  )*0.4386E-02*0.3658E-05*0.3658E-05*0.4386E-02*       417*
+ *(RISPOSTA)*0.4608E-02*0.3751E-05*0.3751E-05*0.4608E-02*       407*
+ *          *          *          *          *          *          *
+ *TERMIN15. *          *          *          *          *          *
+ *DISK    . *0.1499E-01*0.1520E-03*0.1520E-03*0.1499E-01*      5071*
+ *(EMISSION)*0.1497E-01*0.1271E-03*0.1271E-03*0.1497E-01*      4247*
+ *(RICHIN  )*0.1486E-01*0.1239E-04*0.1239E-04*0.1486E-01*       417*
+ *(RISPOSTA)*0.1534E-01*0.1249E-04*0.1249E-04*0.1534E-01*       407*
+ *          *          *          *          *          *          *
+ *LINE_T15. *          *          *          *          *          *
+ *QH      . * 1.220    *0.0000E+00*0.1138E-01* 1.220    *      4664*
+ *(EMISSION)* 1.220    *0.0000E+00*0.1036E-01* 1.220    *      4247*
+ *(RICHIN  )* 1.220    *0.0000E+00*0.1017E-02* 1.220    *       417*
+ *          *          *          *          *          *          *
+ *LINE_T15. *          *          *          *          *          *
+ *HQ      . * 1.220    *0.0000E+00*0.2011E-02* 1.220    *       824*
+ *(RICHIN  )* 1.220    *0.0000E+00*0.1017E-02* 1.220    *       417*
+ *(RISPOSTA)* 1.220    *0.0000E+00*0.9931E-03* 1.220    *       407*
+ *          *          *          *          *          *          *
+ *TERMIN16. *          *          *          *          *          *
+ *UTENTE  . * 119.4    * 1.000    * 1.000    * 119.4    *      4184*
+ *          *          *          *          *          *          *
+ *TERMIN16. *          *          *          *          *          *
+ *ACCESS_H. * 2.832    *0.4424E-02*0.4445E-02* 2.846    *       781*
+ *(RICHIN  )* 3.017    *0.2281E-02*0.2287E-02* 3.026    *       378*
+ *(RISPOSTA)* 2.659    *0.2143E-02*0.2157E-02* 2.677    *       403*
+ *          *          *          *          *          *          *
+ *TERMIN16. *          *          *          *          *          *
+ *CPU     . *0.4609E-02*0.4577E-04*0.4577E-04*0.4609E-02*      4965*
+ *(EMISSION)*0.4651E-02*0.3892E-04*0.3892E-04*0.4651E-02*      4184*
+ *(RICHIN  )*0.4468E-02*0.3378E-05*0.3378E-05*0.4468E-02*       378*
+ *(RISPOSTA)*0.4314E-02*0.3477E-05*0.3477E-05*0.4314E-02*       403*
+ *          *          *          *          *          *          *
+ *TERMIN16. *          *          *          *          *          *
+ *DISK    . *0.1487E-01*0.1476E-03*0.1477E-03*0.1487E-01*      4965*
+ *(EMISSION)*0.1499E-01*0.1255E-03*0.1255E-03*0.1499E-01*      4184*
+ *(RICHIN  )*0.1399E-01*0.1058E-04*0.1058E-04*0.1399E-01*       378*
+ *(RISPOSTA)*0.1438E-01*0.1159E-04*0.1164E-04*0.1445E-01*       403*
+ *          *          *          *          *          *          *
+ *LINE_T16. *          *          *          *          *          *
+ *QH      . * 1.470    *0.0000E+00*0.1341E-01* 1.470    *      4562*
+ *(EMISSION)* 1.470    *0.0000E+00*0.1230E-01* 1.470    *      4184*
+ *(RICHIN  )* 1.470    *0.0000E+00*0.1111E-02* 1.470    *       378*
+ *          *          *          *          *          *          *
+ *LINE_T16. *          *          *          *          *          *
+ *HQ      . * 1.470    *0.0000E+00*0.2296E-02* 1.470    *       781*
+ *(RICHIN  )* 1.470    *0.0000E+00*0.1111E-02* 1.470    *       378*
+ *(RISPOSTA)* 1.470    *0.0000E+00*0.1185E-02* 1.470    *       403*
+ *          *          *          *          *          *          *
+ *SOFTWAR1. *          *          *          *          *          *
+ *PROGRAM . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         2*
+ *(BOOT    )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *SOFTWAR1. *          *          *          *          *          *
+ *SORGENTE. * 14.10    *0.2819E-04*0.2819E-04* 14.10    *         1*
+ *(BOOT    )* 14.10    *0.2819E-04*0.2819E-04* 14.10    *         1*
+ *          *          *          *          *          *          *
+ *SOFTWAR1. *          *          *          *          *          *
+ *SERVIZIO. *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*        30*
+ *(WEBAP   )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*        30*
+ *          *          *          *          *          *          *
+ *SOFTWAR2. *          *          *          *          *          *
+ *PROGRAM . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(BOOT    )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *SOFTWAR2. *          *          *          *          *          *
+ *SORGENTE. * 6.820    *0.1364E-04*0.1364E-04* 6.820    *         1*
+ *(BOOT    )* 6.820    *0.1364E-04*0.1364E-04* 6.820    *         1*
+ *          *          *          *          *          *          *
+ *SOFTWAR2. *          *          *          *          *          *
+ *SERVIZIO. * 20.28    *0.1217E-02*0.1217E-02* 20.28    *        30*
+ *(WEBAP   )* 20.28    *0.1217E-02*0.1217E-02* 20.28    *        30*
+ *          *          *          *          *          *          *
+ *SOFTWAR3. *          *          *          *          *          *
+ *PROGRAM . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(BOOT    )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *SOFTWAR3. *          *          *          *          *          *
+ *SORGENTE. * 2.869    *0.5739E-05*0.5739E-05* 2.869    *         1*
+ *(BOOT    )* 2.869    *0.5739E-05*0.5739E-05* 2.869    *         1*
+ *          *          *          *          *          *          *
+ *SOFTWAR4. *          *          *          *          *          *
+ *PROGRAM . *0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *(BOOT    )*0.0000E+00*0.0000E+00*0.0000E+00*0.0000E+00*         1*
+ *          *          *          *          *          *          *
+ *SOFTWAR4. *          *          *          *          *          *
+ *SORGENTE. * 6.104    *0.1221E-04*0.1221E-04* 6.104    *         1*
+ *(BOOT    )* 6.104    *0.1221E-04*0.1221E-04* 6.104    *         1*
+ *          *          *          *          *          *          *
+ *******************************************************************
+ ... END OF SIMULATION ...
+ 
+ 
+              MEMORY USED:    6364371 WORDS OF 4 BYTES
+               ( 42.43  % OF TOTAL MEMORY)
+   1277 /END/

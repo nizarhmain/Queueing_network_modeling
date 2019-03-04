@@ -1,0 +1,18 @@
+&******************************************************
+& DEFINIZIONE DELL'OGGETTO LINE_TH: Il collegamento TERMINAL-HOST
+&******************************************************
+
+  OBJECT LINE_TH(TH); 		
+	& QH : Coda che invia i pacchetti dal terminale alla coda user dell'host di destinazione tramite il puntatore TOUT
+	& HQ : Coda che invia i pacchetti dall'host alla coda access_h del terminale di destinazione tramite il puntatore TIN
+	QUEUE QH,HQ;          	
+
+	& TOUT : Puntatore a coda utilizzato dalla coda QH, richiama la coda user dell’host.
+	& TIN : Puntatore a coda utilizzato dalla coda QH, richiama la coda access_h dell’host.
+	REF QUEUE TOUT,TIN;
+
+	& Tempo impiegato per la trasmissione del pacchetto, simula il ritardo di trasmissione
+	REAL TH;	          	 
+  END; 
+
+

@@ -1,0 +1,30 @@
+BREVE INTRODUZIONE AL SISTEMA
+------------------------------
+
+La rete su cui si basa il sistem � composta fondamntalmente da 3 tipi diversi 4 tipi di oggetti, ROUTER, HOST, TERMINALE, SOFTWARE.
+L'HOST rappresenta la parte fisica di un dispositivo, ed � l'oggetto che implementa il "protocollo di rete" ossia che implementa la comunicazione tramite la rete con un altro HOST. Questo oggetto non tiene conto di altro se non delle temporizzazioni relative alla rete.
+L'oggetto TERMINAL(E), rapresenta la parte "macchina" d un dispositivo connesso alla rete, e si occupa della temporizzazione della CPU, dell'accesso ai dischi e dei tempi di calcolo e quindi, il suo ruolo completa, ed allo stesso tempo � nettamente separato, da quello dell'HOST, ma, fisicamente, � possibile, ed anzi � spesso cos�, che le due componenti siano riassunte in un unico dispositivo fisico.
+Il ROUTER serve ad instradare i pacchetti attraverso la rete.
+L'oggetto software, infine, simula una applicazione WEB che deve accedere ad un altro server, ed � in questo caso che avverr� la distinzione fra SSO attivo o meno, infatti, se si attiver� la simulazione relativa al SSO, si identificher� un host come host di autenticazione, e prima di raggiungere la destinazione, i pacchetti verranno spediti a quest'ultimo, che dopo aver autenticato l'utente (tempo di servizio) setter� un flag per cui, un'altro utente, relativo a quella sorgente, se il flag � attivato, non dovr� aspettare quel tempo di servizio, ma uno inferiore. Naturalmente, questa condizione di passaggio ha un tempo limite (come nella realt�), e quindi, ci sar� bisogno di un timer relativo ad ogni flag (uno per ogni possibile sorgente delle informazioni), scaduto il quale, il flag verr� resettato e quindi si richieder� di nuovo l'autenticazione.
+
+Per poter efficacemente simulare un sistema SSO, � necesessario altres� che l'HOST definito come autenticazione, abbia un comportamento diverso per i pacchetti relativi all'applicazione WEB (definiti di classe WEBAPP), ossia, come abbiamo detto, � necessario che definisca due tempi di servizio diversi, a seconda che il flag di avvenuta autenticazione sia attivo o meno. I tempi di accesso al disco ed al db (dove risiedono i dati di autenticazione) debbono essere scelti in maniera oculata, in modo da ottenere una simulazione reale del funzionamento.
+
+
+MODIFICHE DA FARE ALLA SITUAZIONE CORRENTE
+------------------------------------------
+
+Sin ora, abbiamo ottenuto una rete in cui abbiamo 16 HOST con altrettanti TERMINAL, 8 ROUTER e 2 SOFTWARE che comunicano fra loro. Si � gi� introdotta la differenziazione dell'host di autenticazione, anche se le prestazioni di quest'ultimo non sono state modificate (pi� o meno � simile alle prestazioni degli altri, quando invece dovrebbe averne di maggiori).
+
+A questo punto � necessario Inserire nell'HOST di autenticazione (in tutti anche se vengono usate solo in quello di autenticazione), un array di interi (eventualmente bidimensionale se si vogliono tracciare anche le destinazioni) che rappresenti i flag relativi ai permessi di passaggio di determinate sorgenti, per determinate destinazioni, ed un array di code che rappresentino i timer relativi a tali flag. 
+
+Definiti tali oggetti, � necessario prevedere, se l'HOST che consideriamo � quello di autenticazione, e se il flag relativo alla sorgente non �  attivo, un servizio nel TERMINAL ad esso relativo, pi� lungo, equivalente alla ricerca delle informazioni dell'utente all'interno del database, ed al calcolo delle informazioni nella CPU. 
+Una volta terminato questo EXTRAServizio del TERMINAL o dell'HOST, il flag viene attivato ed il timer ad esso relativo inizier� lavorare.
+
+Una volta che il timer arriva al tempo definito, il flag verr� reimpostato e la procedura ricomincer�, tuttavia, mentre il timer rimane in esecuzione (solitamente un cookie dura 1 giorno e mezzo o pi�, quindi un tempo molto lungo) i pacchetti relativi a quella sorgente che arriveranno al server SSO subiranno un ritardo di molto minore (quasi inesistente), ed arriveranno subito a destinazione.
+
+Il meccanismo descritto funziona, apparentemente, in half-duplex, ossia � solo il client che si deve autenticare al server, ma � anche possibile pensare ad un sistema full-duples, poich�, con le informazioni definite sin ora dal punto di vista progettuale non cambierebbe molto.
+
+
+
+
+

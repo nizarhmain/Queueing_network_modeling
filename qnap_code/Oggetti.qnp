@@ -1,0 +1,1255 @@
+&*****************************
+& Oggetti.qnp 
+&*****************************
+&
+/DECLARE/
+
+&***************
+&VARIABILI GLOBALI
+&***************
+ INTEGER SCAMBIO;
+ INTEGER NH = 100;                   	 
+ INTEGER NR = 50;
+ INTEGER NV = 200;
+ INTEGER NW = 50;
+ INTEGER COUNT;
+ INTEGER NHTEST;
+ INTEGER NRTEST;
+ INTEGER NVTEST;
+ INTEGER NSOFTW;
+ INTEGER J,I;
+ INTEGER NPVAL;
+ INTEGER EXITSERVER;
+ INTEGER ISOPEN; &Servirebbe a stabilire se il file � aperto o chiuso e questo servirebbe a concludere l'applicazione
+ INTEGER APP;
+  
+ REAL TEMPO;
+ REAL T_MAX;                 
+ REAL PERIODO;     
+        
+ CLASS EMISSION,RECEPT;  
+ CLASS RICHIN,RISPOSTA; 
+ CLASS BOOT,WEBAP; & Classi aggiunte che rappresenatno le web application 
+ REAL LINE_CAP;                  
+ REAL REC_CAP;
+ REAL CAP_BUF;                  
+ INTEGER DEST, LUNGH;
+ 
+ REAL TIME_ARR(NH,NH);  
+ REAL TIME_PART(NH,NH); 
+ REAL RTT(NH,NH);
+ 
+ 
+&*****************
+& ARRAY DI PUNTATORI
+&*****************
+INTEGER COOKIE#(NH);
+REF HOST HOSTS#(NH);
+REF LINE_HR LINE_HR#(NH);
+REF ROUTER ROUTER#(NR);
+REF VIA VIA#(NV);
+REF TERMINAL TERM#(NH);
+REF SOFTWARE SW#(NH); & Array di oggetti software
+REF LINE_TH LINE_TH#(NH);
+
+& ***************************************
+& DEFINIZIONE DEI CUSTOMERS
+&****************************************
+
+ & TYP : sottotipo del pacchetto
+ & TYPE : tipo del pacchetto
+ CUSTOMER STRING TYP, TYPE; 
+
+ & SOUR_ID ID dell'host sorgente
+ & DEST_ID dell'host di destinazione                       	
+ CUSTOMER INTEGER SOUR_ID,DEST_ID;
+
+ & Riferimento al customer e usato in alcune procedure.
+ REF CUSTOMER C; 
+
+& ****************************
+& DEFINIZIONE DELL' OGGETTO HOST
+&****************************
+
+ OBJECT HOST(ID);     
+	& USER: riceve i dati dal terminale tramile la linea_th e li inoltra alla coda Control
+	& CONTROL: simula la finestra scorrevole(sliding window) del protocollo TCP, chiede i diritti di passaggio al semaforo WINDOW e inoltra le informazione alla coda PROTOCOL
+	& PROTOCOL : Coda principale dell'host, nella gestione delle web application richiama la procedura PROT_WEB. A seconda del lato dell'applicazione si occupa di ricever gli ACK di ricezione avvenuta, elimina i pacchetti dal buffer e gestisce i numeri di sequenza. Inoltra anche al terminale sovrastante i pacchetti di dati in entrata dalla rete traminte il puntatore HOTE che richiama la coda HQ della linea_th.
+	QUEUE USER,CONTROL,PROTOCOL;	             		 
+	
+	& ACCESS_E : Gestisce i pacchetti in uscita dall'host, richiama la procedura ACC_EMI che fissa la lunghezza dei pacchetti e i tempi per simulare la trasmissione fisica verso la rete. Inoltre tramite il puntatore NETWORK si inoltra il pacchetto sulla coda R della linea_hr.
+	& ACCESS_R : Gestisce i pacchetti in entrata, richiama la procedura ACC_REC che fissa la lunghezza dei pachetti e i tempi per simulare la ricezione fisica del pacchetto.
+	& WINDOW : coda di tipo semaforo che gestisce e dispensa i diritti di passaggio ai pachetti, richiamata dalla coda CONTROL.
+	& TIMER : Coda che memorizza i pacchetti trasmessi, nel caso di perdite e di pacchetti o ack non arrivati in tempo si manda il pachetto salvato sulla coda PROTOCOL.
+	& WEBTIMER : Attiva solo nei casi di web application, ha la stessa funzione di TIMER ma gestice webapp.
+
+	QUEUE ACCESS_E,ACCESS_R,WINDOW,TIMER,WEBTIMER;
+	
+	& Puntatore alla coda r della linea_hr che collega gli host con i router; richiamato da ACCESS_E
+	REF QUEUE NETWORK;
+	
+	& Puntatore alla coda hq della linea_th che collega gli host con i terminal; richiamato da PROTOCOL
+	REF QUEUE HOTE;   	     	 	
+	
+	& Identificativo dell host
+	INTEGER ID;				
+	
+	& Identificativo del router direttamente connesso all host
+	INTEGER ID_R;
+	
+	& Dimensione della finestra scorrevole del protocollo TCP.
+	INTEGER WIN_SIZE;	
+	
+	&LI: lunghezza di un pacchetto di traffico standard, è calcolato anche il ritardo causato dalle code di accesso alla rete ACCESS_E e ACCESS_R
+	&LA: Lunghezza di un ack di traffico standard, è calcolato il ritatrdo causato dall'accesso fisico alla rete;
+	INTEGER LI,LA;	     
+	
+	& Valore che indica se il sistema SSO è attivo o meno
+	INTEGER SSO;        	               		  
+	
+	& T_EMI_I : tempo impiegato per emettere un byte di un packet sulla rete.
+	& T_EMI_A : tempo impiegato per emettere un byte di un ack sulla rete
+	REAL T_EMI_I,T_EMI_A;				 
+	
+	& T_REC_I : tempo per ricever un byte di un packet
+	& T_REC_A : tempo per ricevere un byte di un ack
+	REAL T_REC_I,T_REC_A;  			                 
+	
+	& Tempo di time-per il traffico standard, in caso di superamento del time-out si passa alla ritrasmissione del pacchetto
+	REAL TIME_OUT;	
+	
+	& PAK Riferimento ad un pacchetto di traffico standard, nello specifico si usa nella gestione di dati
+	& RISP Riferimento ad un pacchetto di traffico standard, corrisponde ad una risposta.
+	REF PACKET PAK, RISP;				 
+	
+	& Presente solo nel caso di web application, fa riferimento ad una webapp
+	REF WEBAPP WA; &&Utilizzato solo per le web application
+ END;
+
+
+&******************************************************
+& DEFINIZIONE DELL'OGGETTO LINE_HR: Il collegamento Host-Router
+&******************************************************
+
+  OBJECT LINE_HR(T); 		
+	& Coda che simula il ritardo di trasmissione causato dal collegamento tra host e router, inoltra i pacchetti alla coda cpu del router tramite il puntatore ROUT
+	QUEUE R;          	                    
+	& Puntatore alla coda cpu del router, viene richiamato della coda R           
+	REF QUEUE ROUT;
+	& Tempo richiesto per la trasmissione
+	REAL T;	          	 
+  END; 
+
+&******************************************************
+& DEFINIZIONE DELL'OGGETTO LINE_TH: Il collegamento TERMINAL-HOST
+&******************************************************
+
+  OBJECT LINE_TH(TH); 		
+	& QH : Coda che invia i pacchetti dal terminale alla coda user dell'host di destinazione tramite il puntatore TOUT
+	& HQ : Coda che invia i pacchetti dall'host alla coda access_h del terminale di destinazione tramite il puntatore TIN
+	QUEUE QH,HQ;          	
+
+	& TOUT : Puntatore a coda utilizzato dalla coda QH, richiama la coda user dell’host.
+	& TIN : Puntatore a coda utilizzato dalla coda QH, richiama la coda access_h dell’host.
+	REF QUEUE TOUT,TIN;
+
+	& Tempo impiegato per la trasmissione del pacchetto, simula il ritardo di trasmissione
+	REAL TH;	          	 
+  END; 
+
+&********************************
+& DEFINIZIONE DELL' OGGETTO ROUTER
+&********************************
+
+ OBJECT ROUTER(ID,N);
+	& N è il numero degli altri router direttamente connessi
+	INTEGER N;
+	& Identificativo del router
+	INTEGER ID;
+	&Coda principale del router, calcola i tempi di trasmissione e instrada i pachetti sull'array S o su INSTR
+	QUEUE CPU;
+	& Contiene i puntatori alle varie code access_r degli host che sono connessi al router. Viene utilizzato quando un pacchetto o una webapp deve andara in un host direttamente collegato al router in cui si trova                          	        
+	REF QUEUE S(NH);
+	& contiene i puntatori alle varie code canale delle vie che servono per connettere i router.
+	REF QUEUE INSTR(N);                     
+	& probabilità che un pacchetto sia instradato verso una posizione dell array instradamento    
+	REAL PROB(N);
+	& capacita di trasmissione
+	REAL RATE;                
+	& probabilità di errore      	
+	REAL P_ERR;      	
+ END;
+
+&******************************************************************
+& DEFINIZIONE DELL'OGGETTO VIA: CONNESSIONE HALF-DUPLEX ROUTER->ROUTER
+&******************************************************************
+
+ OBJECT VIA(ID,TEM);
+	& coda che simula il ritardo di tramissione causato dal collegamento tra i router. Inoltra i pacchetti alla coda cpu del router successivo a quello in cui si trova il pacchetto
+	QUEUE CANALE;                          	               
+	& Puntatore alla Queue cpu, viene richiamato dalla coda CANALE
+	REF QUEUE NEXT_R;
+	& Tempo richiesto per la trasmissione
+	REAL TEM;
+	& ID della via
+	INTEGER ID;
+ END;
+
+&******************************************************************
+& DEFINIZIONE DELL' OGGETTO REQUEST
+&******************************************************************
+CUSTOMER OBJECT REQUEST;
+     
+     INTEGER SIZE;
+     INTEGER ORIG;
+     INTEGER DESTI;
+END;
+
+&******************************************************************
+& DEFINIZIONE DELL' OGGETTO TERMINAL
+&******************************************************************
+OBJECT TERMINAL (IDT);
+
+	& UTENTE : Sorgente che produce i pacchetti per il traffico standard e li invia nella coda CPU del terminal, nel caso in cui il terminal non è coinvolto nella simulazione. Altrimenti questa coda viene bloccata con l’istruzione CST(T_MAX) dove T_MAX è il tempo totale di simulazione.
+	& ACCESS_H : Coda che riceve i pacchetti dall’host e li manda nella coda SCH del terminal, inoltre fa cambiare il lato dell’applicazione, passando da client a server a seconda dei casi.
+	& CPU : Coda che simula il ritardo dovuto alle operazioni che la CPU deve svolgere, infine rimanda i pacchetti nella coda SCH del terminal.
+	& DISK : Coda che simula il ritardo dovuto agli accessi a disco necessari all’applicazione e poi manda i pacchetti nella coda SCH del terminal.
+     QUEUE UTENTE, ACCESS_H, CPU, DISK;
+
+	 & SCH : Attiva solo nei terminal che simulano applicazioni, questa coda gestisce tutte le operazioni attraverso la variabile OP. La variabile OP esegue determinate operazione a seconda del valore che assume e del lato dell’applicazione, per esempio muove i pacchetti nelle varie code CPU, DISK e TERM.Questa coda si occupa anche della trasmissione dei pacchetti alla coda servizio del software e alla coda qh della linea th, tramite il puntatore PORTA.
+	
+	& TERM: Coda che simula il ritardo dell’applicazione dovuto all’interazione con l’utente e poi manda i pacchetti nella coda SCH del terminal.
+     QUEUE SCH,TERM; && Code attive solo per i webterm
+     
+	 & Indica se la sorgente UTENTE è attiva oppure no, ovvero se si devono gestire pacchetti di traffico standard oppure no.
+	 BOOLEAN ACTIVES;
+     
+	 & Identificativo del terminal.
+	 INTEGER IDT;
+     
+	 & Identificativo dell’host a cui il terminal è collegato.
+	 INTEGER ID_H;
+
+	 & cui il terminal è collegato.
+     STRING NAME;
+
+	 & Lunghezza di una richiesta per la CPU o per il disco in un terminal che simula traffico standard.
+	 INTEGER REQLENGHT;
+     
+	 & Process Tempo necessario alla CPU per eseguire un’operazione.
+	 & PROC_D Tempo necessario al disco per eseguire un accesso.
+	 REAL PROCESS, PROC_D;
+
+	 & Pacchetto generato dalla coda UTENTE.
+     REF REQUEST RQ;
+	 & Riferimento alla coda qh dell’oggetto LINE_TH.
+     REF QUEUE PORTA;
+END;
+     
+
+&******************************************************************
+& DEFINIZIONE DELL' OGGETTO PACKET
+&******************************************************************
+
+&BIRTH: Utilizzato per monitorare i tempi di round-trip.
+&DIME: Lunghezza in byte del pacchetto.
+CUSTOMER OBJECT PACKET;
+    REAL BIRTH;
+    INTEGER DIME;
+END;
+&******************************************************************
+& DEFINIZIONE DELL' OGGETTO WEB APPLICATION
+&******************************************************************
+CUSTOMER OBJECT WEBAPP;
+	& AT: Stima del tempo che l’applicazione dovrà spendere nella fase per le operazioni I/O con l’utente;
+	& ACPU: Numero di operazioni richieste dalla CPU dell’host A.
+	& AD: Numero di accessi a disco richiesti dell’host A.
+	& N: Numero di byte trasmessi nella fase sulla rete;
+	& BCPU: Numero di operazioni richieste dalla CPU dell’host B.
+	& BD: Numero di accessi a disco richiesti dell’host B.
+	
+	INTEGER AT,ACPU,AD,N,BCPU,BD; 
+	& Operazioni richieste per fase a terminali (AT in ms),
+	& processore (ACPU), disco (AD), dell web terminal A,
+	& byte spediti sulla rete (N), operazioni richieste per fase 
+	& a processore (BCPU) e disco(BD) dell web terminal B;
+	
+	
+	& OP : Indica la prossima operazione da eseguire all’interno di una fase (es: accesso a disco, trasmissione sulla rete..).
+ 	& L: Indica il lato dell’applicazione, ovvero se si tratta del lato client(0) o del lato server(1.)
+	
+	INTEGER OP,L; & Tipo di operazione richiesta(CPU o Disk o ...) e lato dell'operazione(A o B)
+	
+	
+
+	& tempo di time-out, ovvero il tempo dopo la quale una trasmissione è considerata fallita, e viene ripetuta.
+	INTEGER WTOUT; && Tempo di ritrasmissione per le web application 
+	
+	& Indica la posizione del pacchetto sulla rete.
+	INTEGER SEQ_N;
+	
+	& APPDESTID : Identificativo della destinazione della webapp.
+	& APPDESTNP : Numero di porta della destinazione della webapp.
+	INTEGER APPDESTID,APPDESTNP;
+	
+	& SSO_ID: Identificativo del server SSO se presente.
+	& CLIENT: Intero che serve per identificare il client.
+	& SERVER: Intero che serve per identificare il server
+	INTEGER SSO_ID,CLIENT,SERVER,SSO;
+	
+	& SOUR_NP: Indica il software che ha prodotto il pacchetto, ovvero la porta nel protocollo TCP.
+	& DEST_NP: Indica il software a cui il pacchetto è indirizzato, ovvero la porta nel protocollo TCP.
+	INTEGER SOUR_NP,DEST_NP; & Software A e B dell'applicazione;
+	
+	INTEGER ID;
+END;
+
+&******************************************************************
+& DEFINIZIONE DELL' OGGETTO SOFTWARE
+&******************************************************************
+OBJECT SOFTWARE;
+
+	& PROGRAM : gestisce la creazione delle webapp, assegna anche i valori di porta di destinazione e di origine, leggendo da file tutti i dati necessari.
+	& SERVIZIO : Coda principale del software, inizialmente riconosce se il pacchetto si trova in un client o in un server(anche SSO se presente) e, a seconda del caso, crea e invia il cookie di autenticazione, la risposta server, gestisce il download dei file e svuota il buffer.
+	QUEUE PROGRAM,SERVIZIO;
+
+	& EXIT: Identificativo del terminal agganciato al software, corrisponde anche all’host agganciato al terminal.
+	INTEGER EXIT;
+
+	& Identifica il ruolo del software, ogni software usato nella simulazione di web application avrà un ruolo, il client avrà sempre ruolo 1 metre il server SSO, quand presente, avrà ruolo 3. Questi valori sono indipendenti dall'id del terminal e sono usati all'interno della simulazione anche per no creare confusione con gli id
+
+	INTEGER ROLE;
+
+	& IDS: Identificativo del software, può assumere 0 o 1, il primo caso è per i server, il secondo per i client
+	INTEGER IDS;
+	
+	& Puntate al file "server.app" che descrive il comportamento delle webapp, la quantità di cpu, disco e terminale usata da client e server.
+	REF FILE FA;
+
+	&Riferemento ad una webapp, generalmente usato per creare ed inviare webapp standard
+	REF WEBAPP WA;
+
+	& Buffer di appoggio per permettere di rielabolare gli ID di sorgente e destinazione una volta arrivato il paccheto nel software
+	INTEGER BUF;& Buffer di appogio per permettere lo scambio di PROGRAM e destinazione
+	
+	& Numero di sequenza di controllo, generalmente impostato come numero di sequenza dell'ultimo pacchetto arrivato al software
+	INTEGER C_SEQ_N;
+	
+	& Tempo di inizio dell'applicazione
+	REAL RUNTIME;
+END;
+
+&*******************************************************
+& PROCEDURE PER DESCRIVERE I DIFFE3RENTI SERVIZI DELLE STAZIONI
+&*******************************************************
+	PROCEDURE GETNPVAL(DEST_ID);
+		INTEGER DEST_ID;
+		BEGIN
+			FOR J:=1 STEP 1 UNTIL NSOFTW DO BEGIN  
+				IF SW#(J).EXIT=DEST_ID THEN NPVAL:=J;
+			END;
+		END;
+
+
+&*******************************************************
+& PROCEDURE DI SERVIZIO
+&*******************************************************
+
+    PROCEDURE NewLn (FI);  		
+    REF FILE FI;
+    STRING S;
+    BEGIN
+      	S:=GETLN(FI,STRING,2);
+	IF INDEX(S,";")=0 THEN BEGIN
+	WRITELN(" (!), not found:[",S,"]");
+	ABORT;
+     END;  
+ 
+    END; 
+
+&*******************************************************
+& COPY_P: SALVATAGGIO TEMPORANEO DELLA COPIA DI UN PACCHETTO NEL TIMER
+&******************************************************* 
+ PROCEDURE COPY_P(C,SOUR,DEST);
+	INTEGER SOUR,DEST;
+	REF CUSTOMER C;
+	REF HOST RH; 
+	BEGIN
+		WITH CUSTOMER DO BEGIN
+		RH:= INCLUDING (QUEUE)::HOST;
+		C.DEST_ID:= DEST;
+		C.SOUR_ID:= SOUR; 
+		TRANSIT(C,RH.TIMER);
+		END;
+	END;
+ 
+
+&***************************************************************
+& COPY_TER: SALVATAGGIO DELLA COPIA DI UNA RISPOSTA NEL TERMINAL
+&***************************************************************
+
+PROCEDURE COPY_TER(C,SOUR,DEST);
+	INTEGER SOUR,DEST;
+	REF CUSTOMER C;
+	REF HOST RH;
+	BEGIN
+	WITH CUSTOMER DO BEGIN
+		RH:= INCLUDING (QUEUE)::HOST;
+		C.DEST_ID:= DEST;
+		C.SOUR_ID:= SOUR; 
+		TIME_ARR(DEST,SOUR):= TIME;
+		RTT(SOUR,DEST):=TIME_ARR(DEST,SOUR)-TIME_PART(SOUR,DEST);
+		TRANSIT(C,RH.HOTE,RISPOSTA);
+		END;
+	END;
+
+&***************************************************************
+& COPY_RIC: SALVATAGGIO DELLA COPIA DI UNA RISPOSTA NEL TERMINAL
+&***************************************************************
+PROCEDURE COPY_RIC(C,SOUR,DEST);
+	INTEGER SOUR,DEST;
+	REF CUSTOMER C;
+	REF HOST RH;
+	BEGIN
+		WITH CUSTOMER DO BEGIN
+			RH:= INCLUDING (QUEUE)::HOST;
+			C.DEST_ID:= DEST;
+			C.SOUR_ID:= SOUR; 
+			TRANSIT(C,RH.HOTE,RICHIN);
+	END;
+	END;
+
+&*******************************************************    
+&  DESCRIZIONE DEL [ PROTOCOLLO IN EMISSIONE ] 
+&*******************************************************
+
+ PROCEDURE PROT_EMI(TEI,TEA);    
+	REAL TEI,TEA;
+	REF HOST RH;
+	BEGIN
+		WITH CUSTOMER DO BEGIN
+		RH:= INCLUDING (QUEUE)::HOST;
+		IF TYP = "ack" THEN  
+			BEGIN
+				EXP(TEA);                         
+				TRANSIT(RH.ACCESS_E);                	 	  
+			END
+		ELSE   
+			BEGIN
+				TYP:="info";
+				EXP(TEI);
+				COPY_P(NEW(CUSTOMER),SOUR_ID,DEST_ID);
+				TRANSIT(RH.ACCESS_E); 
+			END;
+		END;
+	END;
+&******************************************************* 
+&  DESCRIZIONE DEL [ PROTOCOLLO IN RICEZIONE ]
+&*******************************************************
+
+
+ PROCEDURE PROT_REC(TRI,TRA,HOST_ID);
+	REAL TRI,TRA;
+	INTEGER HOST_ID;
+	REF HOST RH;
+	BEGIN
+		WITH CUSTOMER DO BEGIN
+		RH:= INCLUDING (QUEUE)::HOST;
+	IF TYP = "info" THEN
+		BEGIN
+			IF TYPE = "rich" THEN 
+				BEGIN 
+					TYP:="ack";
+					TYPE:="risp";
+					DEST_ID:= SOUR_ID;	
+					SOUR_ID:= HOST_ID;
+					EXP(TRI);
+					COPY_RIC(NEW(CUSTOMER),SOUR_ID,DEST_ID);
+					TRANSIT(RH.PROTOCOL,EMISSION);  
+				END
+			ELSE
+				BEGIN 
+					TYP:="ack";
+					DEST_ID:= SOUR_ID;	
+					SOUR_ID:=HOST_ID;
+					EXP(TRI);
+					COPY_TER(NEW(CUSTOMER),SOUR_ID,DEST_ID);
+					TRANSIT(RH.PROTOCOL,EMISSION);  
+				END;
+		END
+	ELSE  
+		BEGIN
+			EXP(TRA); 
+				IF (HOST.TIMER.FIRST<> NIL)THEN 
+					BEGIN
+					TRANSIT(RH.TIMER.FIRST,OUT);
+					V(RH.WINDOW); 
+					END; 
+				TRANSIT(OUT);  
+			END;
+		END;
+	END;
+
+&*******************************************************    
+&  DESCRIZIONE DEL [ PROTOCOLLO PER WEB APPLICATION] 
+&*******************************************************
+ PROCEDURE PROT_WEB(TEI,TEA);    
+ REAL TEI,TEA;
+ REF HOST RH;
+ BEGIN
+ 	WITH (CUSTOMER::WEBAPP) DO BEGIN
+	RH:= INCLUDING (QUEUE)::HOST;
+ 	IF SOUR_ID=RH.ID THEN 
+	 BEGIN && Si sfrutta il fatto che ogni terminale ha IDT=ID sell'host sottostante per riconoscere che i dati hanno origine locale
+    		IF TYP= "app" THEN BEGIN
+     			EXP(TEI);
+     			RH.WA:= NEW (WEBAPP);
+				RH.WA.TYPE:="web";
+     			RH.WA.TYP:="app";
+     			&& Copia di tutti i dati
+     			RH.WA.AT:=AT;
+     			RH.WA.ACPU:=ACPU;
+     			RH.WA.AD:=AD;
+     			RH.WA.N:=N;
+     			RH.WA.BCPU:=BCPU;
+     			RH.WA.BD:=BD;
+     			RH.WA.OP:=OP;
+				RH.WA.L:=L;
+				RH.WA.WTOUT:=WTOUT;
+				RH.WA.SEQ_N:=SEQ_N; 
+				RH.WA.SOUR_ID:=SOUR_ID;
+				RH.WA.DEST_ID:=DEST_ID;
+				RH.WA.SOUR_NP:=SOUR_NP;&se inverto queste due completa l'applicazione
+				RH.WA.DEST_NP:=DEST_NP;
+	 		&& Copia pronta	
+	 		TRANSIT	(RH.WA,RH.WEBTIMER,WEBAP);
+     		TRANSIT (RH.ACCESS_E);     			
+    		END;
+    END
+   	ELSE && Dati che vengono da remoto
+	BEGIN
+	IF TYP="app" THEN
+		BEGIN	
+				& Si controllo se il numero di sequenze NUMSEQ del pacchetto arrivato è maggiore dell'ultimo memorizzato dal software. Se ci sono state perdite, ovvero il numero NUMSEQ è minore, si butta il pacchetto
+				PRINT ("NUMSEQ: ", SW#(DEST_NP).C_SEQ_N);
+    			IF (SEQ_N >SW#(DEST_NP).C_SEQ_N)THEN
+    				BEGIN
+					& andiamo sul buffer WEBTIMER (coda che nel caso si superi il tempo WTOUT invia il pacchetto sulla coda PROTOCOL)
+					& scrollendolo tutto con un while, e, se non si tratta della stessa applicazione(caso attuale), si punta all'ultimo elemento di WEBTIMER
+					RH.WA:=(RH.WEBTIMER.FIRST)::WEBAPP;
+    				WHILE (RH.WA<>NIL) DO BEGIN
+    					IF DEST_NP=RH.WA.SOUR_NP THEN BEGIN  & Si identifica che si tratta della stessa applicazione
+    						V(RH.WINDOW);
+    						IF (RH.WA.NEXT=NIL) THEN BEGIN 
+    								TRANSIT (RH.WA,OUT);
+    								RH.WA:=NIL;
+    							END
+    						ELSE BEGIN 
+    						RH.WA:=(RH.WA.NEXT)::WEBAPP;
+    							TRANSIT (RH.WA.PREVIOUS,OUT);
+    							END;
+   						END
+    					ELSE RH.WA:=(RH.WA.NEXT)::WEBAPP;
+					END;					
+					EXP(TEA);
+    		 		RH.WA:=NEW (WEBAPP);
+    		 		RH.WA.SOUR_ID:=DEST_ID;
+    		 		RH.WA.DEST_ID:=SOUR_ID;
+    		 		RH.WA.DEST_NP:=SOUR_NP;
+    		 		RH.WA.SOUR_NP:=DEST_NP;
+    		 		RH.WA.N:=3; && Dimensione prefissata per gli ack
+					RH.WA.TYPE:="ack";
+					RH.WA.ACPU:=10;
+					RH.WA.AD:=10;
+					RH.WA.AT:=10;
+					RH.WA.BCPU:=10;
+					RH.WA.BD:=10;
+    		 		RH.WA.SEQ_N:=SEQ_N;
+    		 		RH.WA.TYP:="ack"; && anche gli ack devono avere seq_n per essere riconosciuti
+					 & si manda sulla coda ACCESS_E con classe WEBAP
+    		 		TRANSIT (RH.WA,RH.ACCESS_E,WEBAP); && Invio dell'ack
+					SW#(DEST_NP).C_SEQ_N:=SEQ_N;
+					PRINT ("NUMSEQ: ", SW#(DEST_NP).C_SEQ_N);
+					& il pacchetto normale va invece mandato sul puntatore HOTE, ovvero la coda HQ della linea
+					TRANSIT (RH.HOTE);
+    		 	END
+				ELSE
+    			BEGIN
+				PRINT("HO BUTTATO VIA UN PACCHETTO RITRASMESSO ", N);
+				TRANSIT (OUT);
+				END;
+		END;
+    	IF (TYP = "ack") THEN BEGIN
+    			IF (SW#(DEST_NP).C_SEQ_N>SEQ_N)THEN TRANSIT (OUT) && Ack vecchio
+    			ELSE BEGIN& L'ack non inverte porta PROGRAM e destinazione, lavorando solo a livello host
+						RH.WA:=(RH.WEBTIMER.FIRST)::WEBAPP;
+    					WHILE (RH.WA<>NIL) DO 
+							BEGIN 
+							IF DEST_NP=RH.WA.SOUR_NP THEN BEGIN  & Si identifica che si tratta della stessa applicazione
+								V(RH.WINDOW);
+								IF (RH.WA.NEXT=NIL) THEN BEGIN 
+    									TRANSIT (RH.WA,OUT);
+    									RH.WA:=NIL;
+    									END
+								ELSE BEGIN 
+									RH.WA:=(RH.WA.NEXT)::WEBAPP;
+									TRANSIT (RH.WA.PREVIOUS,OUT);
+    								END;
+									
+    							END
+							ELSE 
+								RH.WA:=(RH.WA.NEXT)::WEBAPP;
+							END;
+						END;
+    			TRANSIT (OUT);
+    	END;
+	END;
+END;
+END;
+   	
+    	
+&*******************************************************
+&  TRASMISSIONE FISICA DELL' INFORMAZIONE 
+&*******************************************************
+
+ PROCEDURE ACC_EMI(LENGTH_I,LENGTH_A,LENGTH_W);
+	INTEGER LENGTH_I,LENGTH_A,LENGTH_W,LENGTH;
+	BEGIN
+		IF TYPE="web" THEN 
+			LENGTH:=LENGTH_W
+		ELSE 
+			IF TYP = "ack" THEN 
+				LENGTH:= LENGTH_A
+			ELSE 
+				LENGTH:= LENGTH_I;        
+				EXP((LENGTH*8)/LINE_CAP);					    
+	END;
+
+&*******************************************************
+&  RICEZIONE FISICA DELL' INFORMAZIONE 
+&*******************************************************
+	
+ PROCEDURE ACC_REC(RLENGTHI,RLENGTHA,RLENGTHW);
+	INTEGER RLENGTHI,RLENGTHA,RLENGTHW,LLENGTH;
+	BEGIN
+	IF TYPE="web" THEN 
+		LLENGTH:=RLENGTHW
+	ELSE 
+		IF TYP = "info" THEN
+			LLENGTH:= RLENGTHI 
+		ELSE 
+			LLENGTH:= RLENGTHA;
+			EXP((LLENGTH*8)/REC_CAP);					     
+	END;
+
+
+&*****************
+& STATIONS
+&*****************
+/STATION/
+   NAME=*SOFTWARE.SERVIZIO;
+   SERVICE (WEBAP) = BEGIN
+			WITH (CUSTOMER::WEBAPP) DO BEGIN
+			COUNT := COUNT +1;
+			IF (IDS=0) THEN & SIAMO IN UN SERVER
+				BEGIN		
+					&SONO IN UN SERVER WEB
+					EXP(20);
+					PRINT ("Sono nel server web", DEST_ID);
+					APP:=GET(FA,INTEGER);
+					FOR I:=1 STEP 1 UNTIL NSOFTW DO
+					BEGIN
+					IF SW#(I).ROLE=APP THEN SOUR_ID:=SW#(I).EXIT;
+					END;
+					APP:=GET(FA,INTEGER);
+					FOR I:=1 STEP 1 UNTIL NSOFTW DO
+					BEGIN
+					IF SW#(I).ROLE=APP THEN DEST_ID:=SW#(I).EXIT;
+					END;
+					
+					ACPU:=GET(FA,INTEGER);
+					IF (ACPU=-1)THEN BEGIN && fine applicazione
+						FOR I:=1 STEP 1 UNTIL NSOFTW DO 
+						BEGIN
+							WA:=(HOSTS#(SW#(I).EXIT).WEBTIMER.FIRST)::WEBAPP;
+							WHILE (WA<>NIL) DO 
+							BEGIN
+								IF (WA.NEXT=NIL) THEN 
+								BEGIN 
+									TRANSIT (WA,OUT);
+									WA:=NIL;
+								END
+								ELSE 
+								BEGIN 
+									WA:=(WA.NEXT)::WEBAPP;
+									TRANSIT (WA.PREVIOUS,OUT);
+								END;
+							END;
+						END;
+						PRINT ("FINE APPLICAZIONE");
+						PRINT ("FINE APPLICAZIONE",TIME);
+						CLOSE(FA);
+						ISOPEN:=1;
+						TRANSIT(OUT); 
+					END;
+					
+					OP:=1;
+					IF (L=1) THEN OP:=12;
+					TYPE:="risweb";
+					GETNPVAL(DEST_ID);
+					DEST_NP:=NPVAL;
+					GETNPVAL(SOUR_ID);
+					SOUR_NP:=NPVAL;
+					PRINT ("DESTID: ", DEST_ID, "SOURID: ", SOUR_ID,"DESTNP: ", DEST_NP, "SOURNP: ", SOUR_NP);
+			        AD:=GET(FA,INTEGER);
+			        AT:=GET(FA,INTEGER);	
+			        N:=GET(FA,INTEGER);
+			        IF (N=0) THEN PRINT ("ERROR: I dati non sono consistenti");
+			        BCPU:=GET(FA,INTEGER);
+			        BD:=GET(FA,INTEGER);
+					WTOUT:=N*2+ACPU*2+AD*2+AT*2+BCPU*2+BD*2;
+					NewLn(FA);
+					SW#(SOUR_NP).C_SEQ_N:=SEQ_N;
+					TRANSIT(TERM#(EXIT).SCH);
+				END
+				ELSE
+				BEGIN
+					PRINT("SONO NEL CLIENT ", IDS);
+					APP:=GET(FA,INTEGER);
+					FOR I:=1 STEP 1 UNTIL NSOFTW DO
+					BEGIN
+					IF SW#(I).ROLE=APP THEN
+					SOUR_ID:=SW#(I).EXIT;
+					END;
+					APP:=GET(FA,INTEGER);
+					FOR I:=1 STEP 1 UNTIL NSOFTW DO
+					BEGIN
+					IF SW#(I).ROLE=APP THEN
+					DEST_ID:=SW#(I).EXIT;
+					END;
+					
+					ACPU:=GET(FA,INTEGER);
+					IF (ACPU=-1)THEN BEGIN && fine applicazione
+						FOR I:=1 STEP 1 UNTIL NSOFTW DO 
+						BEGIN
+							WA:=(HOSTS#(SW#(I).EXIT).WEBTIMER.FIRST)::WEBAPP;
+							WHILE (WA<>NIL) DO 
+							BEGIN
+								IF (WA.NEXT=NIL) THEN 
+								BEGIN 
+									TRANSIT (WA,OUT);
+									WA:=NIL;
+								END
+								ELSE 
+								BEGIN 
+									WA:=(WA.NEXT)::WEBAPP;
+									TRANSIT (WA.PREVIOUS,OUT);
+								END;
+							END;
+						END;
+						PRINT ("FINE APPLICAZIONE");
+						PRINT ("FINE APPLICAZIONE",TIME);
+						CLOSE(FA);
+						ISOPEN:=1;
+						TRANSIT(OUT); 
+					END;				
+					OP:=1;
+					IF (L=1) THEN 
+						OP:=12;
+					TYPE:="web";
+					TYP:="app";
+					
+					
+					
+					GETNPVAL(DEST_ID);
+					DEST_NP:=NPVAL;
+					GETNPVAL(SOUR_ID);
+					SOUR_NP:=NPVAL;
+						
+					AD:=GET(FA,INTEGER);
+					AT:=GET(FA,INTEGER);	
+					N:=GET(FA,INTEGER);
+					IF (N=0) THEN 
+						PRINT ("ERROR: I dati non sono consistenti");
+					BCPU:=GET(FA,INTEGER);
+					BD:=GET(FA,INTEGER);
+					WTOUT:=N*2+ACPU*2+AD*2+AT*2+BCPU*2+BD*2;
+					NewLn(FA);
+					SEQ_N:=SEQ_N+1;
+					TRANSIT(TERM#(EXIT).SCH);
+				END;
+		END;
+END;
+
+
+
+	
+/STATION/
+ NAME = *SOFTWARE.PROGRAM;
+    INIT(BOOT)=1;
+    SERVICE (BOOT)= BEGIN
+    		    IF (IDS=0) THEN 
+					BEGIN
+         				TRANSIT (OUT);
+         			END
+         	    ELSE
+         			BEGIN
+					OPEN(FA,1);
+					WA:=NEW (WEBAPP);
+					PRINT("INIZIO APPLICAZIONE:",TIME);
+					WA.OP:=0;
+					WA.L:=0;
+					WA.SEQ_N:=1;
+					WA.TYPE:="web";
+					WA.TYP:="app";
+					& Viene letto il file Server.app
+					APP:=GET(FA,INTEGER);
+					FOR I:=1 STEP 1 UNTIL NSOFTW DO
+						BEGIN
+							IF SW#(I).ROLE=APP THEN 
+								WA.SOUR_ID:=SW#(I).EXIT;
+						END;
+				
+				APP:=GET(FA,INTEGER);
+				FOR I:=1 STEP 1 UNTIL NSOFTW DO
+				BEGIN
+					IF SW#(I).ROLE=APP THEN 
+						WA.DEST_ID:=SW#(I).EXIT;
+				END;
+				
+				GETNPVAL(WA.SOUR_ID);
+    		    WA.SOUR_NP:=NPVAL;
+				GETNPVAL(WA.DEST_ID);
+    		    WA.DEST_NP:=NPVAL;
+    		    
+				TRANSIT (WA,PROGRAM,WEBAP);
+			END;
+    		END;
+    SERVICE (WEBAP)= BEGIN
+    			WITH (CUSTOMER::WEBAPP) DO BEGIN
+					PRINT ("PARTO DAL CLIENT ",SOUR_ID, "PER ANDARE A", DEST_ID);
+					ACPU:=GET(FA,INTEGER);
+					IF (ACPU=-1)THEN 
+						BEGIN && fine applicazione
+						FOR I:=1 STEP 1 UNTIL NSOFTW DO 
+						BEGIN
+							WA:=(HOSTS#(SW#(I).EXIT).WEBTIMER.FIRST)::WEBAPP;
+							WHILE (WA<>NIL) DO 
+							BEGIN
+								IF (WA.NEXT=NIL) THEN 
+								BEGIN 
+									TRANSIT (WA,OUT);
+									WA:=NIL;
+								END
+								ELSE 
+								BEGIN 
+									WA:=(WA.NEXT)::WEBAPP;
+									TRANSIT (WA.PREVIOUS,OUT);
+								END;
+							END;
+						END;
+						PRINT ("FINE APPLICAZIONE");
+						PRINT ("FINE APPLICAZIONE",TIME);
+						CLOSE(FA);
+						TRANSIT(OUT); 
+					END;
+					
+					AD:=GET(FA,INTEGER);
+               		AT:=GET(FA,INTEGER);	
+               		N:=GET(FA,INTEGER);
+               		IF (N=0) THEN PRINT ("ERROR: I dati non sono consistenti");
+               		BCPU:=GET(FA,INTEGER);
+               		BD:=GET(FA,INTEGER);
+					WTOUT:=N*2+ACPU*2+AD*2+AT*2+BCPU*2+BD*2;
+               		NewLn(FA);
+               		OP:=1;
+               		TRANSIT (TERM#(EXIT).SCH);
+               		END;
+               	END;
+ TRANSIT=OUT;
+    	
+
+/STATION/
+    NAME = *TERMINAL.SCH;
+    SERVICE(WEBAP) = BEGIN
+		   	WITH (CUSTOMER::WEBAPP) DO BEGIN
+		IF (L=1) THEN 
+               BEGIN 
+			    IF (OP=0) THEN TRANSIT (SW#(DEST_NP).SERVIZIO);
+				IF (OP=12) THEN BEGIN 
+               		OP:=1;
+               		TRANSIT (CPU);
+				END;
+				IF (OP=1) THEN BEGIN 
+               		OP:=2;
+               		TRANSIT (DISK);
+               		END;
+				IF (OP=2) THEN BEGIN
+               		OP:=3;
+               		TRANSIT (TERM);
+               		END;
+               	IF (OP=3) THEN BEGIN
+               		OP:=1;
+               		TRANSIT (PORTA);
+               		END;
+               	IF (OP=4) THEN BEGIN
+               		 OP:=5;
+               		 TRANSIT (CPU);
+               		 END;
+               	IF (OP=5) THEN BEGIN
+               		OP:=6;
+               		TRANSIT (DISK);
+               		END;
+				IF (OP=6) THEN BEGIN
+               		OP:=0;
+               		TRANSIT (TERM);
+               	END;
+               		 
+               END
+         ELSE
+                BEGIN 
+				IF (OP=0) THEN TRANSIT (SW#(DEST_NP).SERVIZIO);
+				IF (OP=1) THEN BEGIN 
+               		OP:=2;
+               		TRANSIT (CPU);
+				END;
+				IF (OP=2) THEN BEGIN 
+               		OP:=3;
+               		TRANSIT (DISK);
+               		END;
+				IF (OP=3) THEN BEGIN
+				    OP:=4;
+               		TRANSIT (TERM);
+               		END;
+               	IF (OP=4) THEN 
+					IF (TYPE="risweb") THEN BEGIN
+						TRANSIT (SW#(DEST_NP).SERVIZIO);
+						END
+					ELSE BEGIN
+							TRANSIT (PORTA);
+						 END;
+				
+                IF (OP=5) THEN BEGIN 
+               		OP:=6;
+               		TRANSIT (CPU);
+			END;
+		IF (OP=6) THEN BEGIN 
+               		OP:=7;
+               		TRANSIT (DISK);
+               		END;
+               	IF (OP=7) THEN BEGIN
+               		OP:=0;
+               		TRANSIT (TERM);
+               		END;
+               
+               END;
+	END;
+	END;
+	
+	 
+
+	
+
+/STATION/
+ NAME = *TERMINAL.CPU;
+ SERVICE (WEBAP) = BEGIN
+	WITH (CUSTOMER::WEBAPP) DO BEGIN
+ 		IF (L=1) THEN 
+		 	CST(BCPU*PROCESS)
+ 		ELSE
+ 			CST(ACPU*PROCESS);
+ 		TRANSIT (SCH);
+ 		END;
+ 	END;
+
+ SERVICE = EXP(PROCESS);
+ TRANSIT = DISK;
+
+
+
+ /STATION/
+ NAME = *TERMINAL.DISK;
+ SERVICE(WEBAP) = BEGIN
+		WITH (CUSTOMER::WEBAPP) DO BEGIN
+ 	    	IF (L=1) THEN 
+				CST(BD*PROC_D)
+ 	    	ELSE
+            	CST(AD*PROC_D);
+            	TRANSIT (SCH);
+            	END;
+	   END;
+
+SERVICE(EMISSION) = BEGIN
+	        EXP(PROC_D);
+            TRANSIT(PORTA,EMISSION);
+            END;
+ SERVICE(RICHIN) = BEGIN
+	        EXP(PROC_D);
+            TRANSIT(PORTA,RICHIN);
+            END;
+ SERVICE(RISPOSTA) = BEGIN
+	        EXP(PROC_D);
+            TRANSIT(OUT);
+            END;
+ TRANSIT = OUT;
+
+ 
+ /STATION/
+ NAME = *TERMINAL.TERM;
+ SERVICE (WEBAP) =  BEGIN
+			WITH (CUSTOMER::WEBAPP) DO EXP(AT);
+		    END;
+
+ TRANSIT = SCH;
+ 
+  
+ /STATION/
+ NAME = *TERMINAL.ACCESS_H;
+ SERVICE (WEBAP) =  WITH (CUSTOMER::WEBAPP) DO BEGIN
+		&PRINT("PASSO IN ACCESS_H");
+		IF L=0 THEN 
+			L:=1 
+		ELSE 
+			L:=0;
+ 		TRANSIT (SCH);
+ 		END;
+ SERVICE =  BEGIN
+ 			EXP((LUNGH*8)/CAP_BUF);  
+ 			TRANSIT(CPU);
+ END;
+
+
+/STATION/
+    NAME = *TERMINAL.UTENTE;
+    &INIT=0;
+    TYPE = SOURCE;
+    SERVICE = BEGIN
+    		IF (ACTIVES)THEN BEGIN
+                EXP(TEMPO*100);
+		RQ := NEW(REQUEST);
+	        RQ.ORIG:=IDT;
+                RQ.SIZE:= REQLENGHT;
+                DEST := RINT(1,NHTEST);
+                WHILE (TERM#(DEST).ACTIVES=FALSE) DO && Che al limite neanche serve
+                	DEST := RINT(1,NHTEST);
+                RQ.DESTI := DEST;
+                LUNGH := RQ.SIZE;
+ 	        TRANSIT(RQ,CPU,EMISSION);
+ 	        END
+ 	        ELSE
+ 	        CST(T_MAX); && Bloccaggio della PROGRAM
+	      END;
+    TRANSIT = OUT;  
+
+
+/STATION/
+ NAME  =  *HOST.USER;
+ SCHED = FIFO;
+ SERVICE(EMISSION) = BEGIN
+            EXP(TEMPO);
+            PAK := NEW(PACKET);
+            PAK.TYP:= "data";
+            PAK.TYPE:="rich";
+            PAK.SOUR_ID:= ID;
+	    	PAK.DEST_ID:= DEST;
+            PAK.DIME := LUNGH;
+            PAK.BIRTH :=TIME;
+            TIME_PART(PAK.SOUR_ID,PAK.DEST_ID):= PAK.BIRTH;
+            
+            TRANSIT(PAK,CONTROL,EMISSION); 
+           END;
+ SERVICE (RICHIN) = BEGIN
+                EXP(TEMPO);
+		RISP:= NEW(PACKET);
+                RISP.TYP := "data";
+                RISP.TYPE := "risp";
+            	RISP.DEST_ID:= DEST_ID;
+                RISP.SOUR_ID:= ID;
+	    	RISP.DIME := LUNGH;
+            	RISP.BIRTH :=TIME;
+	    	TRANSIT(RISP,CONTROL,RICHIN);
+ 	       END;
+ SERVICE (WEBAP)= BEGIN
+		WITH (CUSTOMER::WEBAPP) DO BEGIN
+		&PRINT ("HOST:USER L=",L,"OP=",OP);
+		TRANSIT (CONTROL);
+		END;
+		END;
+ TRANSIT = OUT; 
+       
+ /STATION/                                     
+ NAME = *HOST.CONTROL;
+ SERVICE = P(WINDOW);          
+ TRANSIT = PROTOCOL;                       
+  
+ /STATION/                                    
+ NAME = *HOST.WINDOW;
+ TYPE = SEMAPHORE,MULTIPLE(WIN_SIZE);
+
+ /STATION/
+ NAME = *HOST.TIMER;
+ SERVICE= BEGIN
+	   CST(TIME_OUT);
+	   TYP:="data";                                      
+	   TRANSIT(PROTOCOL,EMISSION,1);   
+	   END;
+	   
+	   
+/STATION/
+ NAME = *HOST.WEBTIMER;
+ SERVICE (WEBAP) = BEGIN
+ 		WITH (CUSTOMER::WEBAPP) DO BEGIN
+ 	   	CST(WTOUT);
+		&PRINT ("WTOUT",WTOUT);
+ 	   	TRANSIT (PROTOCOL);
+ 	   	END;
+ 	   END;   
+	   
+ /STATION/ 
+ NAME = *HOST.PROTOCOL; 
+ SCHED = PRIOR;	                            	  
+ SERVICE(EMISSION) =BEGIN
+		PROT_EMI(T_EMI_I,T_EMI_A);
+		    END;
+ SERVICE(WEBAP) = BEGIN
+		PROT_WEB(T_EMI_I,T_EMI_A);
+		END;
+ SERVICE(RICHIN) = BEGIN
+			PROT_EMI(T_EMI_I,T_EMI_A);
+		   END;
+ SERVICE(RECEPT) = BEGIN 
+			PROT_REC(T_REC_I,T_REC_A,ID);
+		   END;
+ TRANSIT(RECEPT) = OUT; 
+ 
+                	
+
+ /STATION/
+ NAME = *HOST.ACCESS_E;
+ SERVICE = IF CUSTOMER IS WEBAPP THEN 
+		BEGIN
+		IF ((CUSTOMER::WEBAPP).TYPE="web") OR ((CUSTOMER::WEBAPP).TYPE="risweb") THEN
+			BEGIN
+				PRINT("*********************************");
+				PRINT("        EMESSO PACCHETTO:        ");
+				PRINT("*********************************");
+				PRINT("- DIMENSIONE: ",(CUSTOMER::WEBAPP).N);
+				PRINT("- TYPE: ", (CUSTOMER::WEBAPP).TYPE);
+				PRINT("- SOURID: ",(CUSTOMER::WEBAPP).SOUR_ID);
+				PRINT("- SOURNP: ",(CUSTOMER::WEBAPP).SOUR_NP);
+				PRINT("- DESTID: ",(CUSTOMER::WEBAPP).DEST_ID);
+				PRINT("- DESTNP: ",(CUSTOMER::WEBAPP).DEST_NP);
+				PRINT("- SEQNUM: ",(CUSTOMER::WEBAPP).SEQ_N);
+				PRINT("- WTOUT: ",(CUSTOMER::WEBAPP).WTOUT);
+				PRINT("- TIME: ",TIME);
+				PRINT("*********************************");
+			END
+		ELSE
+			BEGIN
+				PRINT("DIM.EMESSO:",(CUSTOMER::WEBAPP).N,"TYPE ",TYPE," HOST NUMERO: ",ID,"SEQNUM: ",(CUSTOMER::WEBAPP).SEQ_N);
+				PRINT("TIME: ",TIME);
+			END;
+ 		ACC_EMI(LI,LA,(CUSTOMER::WEBAPP).N);
+		END
+ 		ELSE ACC_EMI(LI,LA,0);
+ & Una volta finita la procedura si inoltra su NETWORK che corrisponde alla coda R della lINE_HR che permette il collegamento host-router
+ TRANSIT=NETWORK;	
+
+ /STATION/
+ NAME = *HOST.ACCESS_R;
+ SERVICE = IF CUSTOMER IS WEBAPP THEN
+		BEGIN
+			PRINT("DIM.RICEVUTO:",(CUSTOMER::WEBAPP).N,"TYPE ",TYPE,"HOST NUMERO: ",ID,"SEQNUM: ",(CUSTOMER::WEBAPP).SEQ_N);
+			ACC_REC(LI,LA,(CUSTOMER::WEBAPP).N)
+		END
+ 		ELSE 
+		 	ACC_REC(LI,LA,0);
+ TRANSIT=PROTOCOL;
+
+ 
+
+
+&**************************************************
+& STAZIONE DELLA LINEA HOST-ROUTER E TERMINAL-HOST
+&**************************************************
+
+/STATION/
+ NAME = *LINE_HR.R;	
+ & Si calcola il tempo costante relativo alla trasmissione del pacchetto che verrà, poi inoltrato su ROUT, puntatore alla coda del Router
+ SERVICE = BEGIN 
+			CST(T);
+		   END
+
+ TRANSIT = ROUT; 	     	
+
+/STATION/
+ NAME = *LINE_TH.QH;	
+ SERVICE = CST(TH);
+ TRANSIT = TOUT;
+	     	
+/STATION/
+ NAME = *LINE_TH.HQ;	
+ SERVICE = BEGIN 
+ IF CUSTOMER IS WEBAPP THEN
+ 	CST(TH);
+ END;
+ TRANSIT = TIN;
+
+&****************
+& CPU DI UN ROUTER
+&****************
+/DECLARE/
+INTEGER PR;
+
+/STATION/
+ NAME = *ROUTER.CPU;
+ SCHED = FIFO,PRIOR;
+ SERVICE = BEGIN
+ 	   IF (TYP = "info") THEN 
+			& calcolo del tempo esponenziale, in base al tipo di pacchetto, e controllato se c'è perdita di pacchetti(in caso viene scartato)
+ 	   		EXP((HOSTS#(SOUR_ID).LI * 8)/RATE)
+           ELSE IF (TYP = "app" ) AND (CUSTOMER IS WEBAPP)   THEN
+		   		EXP(((CUSTOMER::WEBAPP).N * 8)/RATE)
+		   ELSE 
+		   		EXP((HOSTS#(SOUR_ID).LA * 8)/RATE);	
+           IF DRAW(P_ERR) THEN 
+		   		TRANSIT(OUT)
+           ELSE 
+		   	& Confrontare id del router collegato all host di destinazione con l'id del router nel quale si trova attualmente il pacchetto
+           	IF (HOSTS#(DEST_ID).ID_R = ID) THEN 
+					& if yes, viene mandato sull'array di puntatori S, il quale contiene i riferimenti alle code ACCESS_R degli host
+				   IF (CCLASS=WEBAP) THEN 
+				   		TRANSIT(S(DEST_ID))
+				   ELSE 
+				   		TRANSIT(S(DEST_ID),RECEPT); 
+           END;
+& viene transitato sull array di puntatori INSTR, il quale contiene i puntatori alle code CANALE delle vie che permettono la connessione router-router
+ TRANSIT=INSTR(1 STEP 1 UNTIL N),PROB,OUT;
+
+&*********************************
+& STAZIONE DELLA LINEA ROUTER-ROUTER
+&*********************************
+
+/STATION/
+	NAME=*VIA.CANALE;
+	SERVICE= CST(TEM);
+	TRANSIT=NEXT_R;                    
+
+&
+&********************************
+& CREAZIONE DELLA LIBRERIA DI OGGETTI
+&********************************
+
+ /DECLARE/ FILE F;
+ /EXEC/ BEGIN
+	FILASSIGN(F,"LIB.lis");
+	OPEN(F,2);
+	SAVE(F,"OGGETTI");
+	END;
+ /END/
+
+
+
+
+
+

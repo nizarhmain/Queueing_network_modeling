@@ -1,0 +1,335 @@
+&*****************************
+& Simulatore.qnp 
+&*****************************
+
+& RESTORE DEL FILE DI OGGETTI
+
+/DECLARE/ FILE F;
+/EXEC/ BEGIN
+	FILASSIGN(F,"LIB.lis");
+	OPEN(F,1);
+	RESTORE(F,"OGGETTI");	
+	END;
+
+& PROCEDURA NewLine
+
+/DECLARE/
+    PROCEDURE NewLine;  		
+    STRING S;
+    BEGIN
+	S:=GETLN(STRING,2);
+	IF INDEX(S,";")=0 THEN BEGIN
+	WRITELN(" (!); not found:[",S,"]");
+	ABORT;
+     END;
+    END; 
+
+& PROCEDURA BuildMod
+
+   PROCEDURE BuildMod;
+   INTEGER N_Hosts,N_Router,N_Vie,N_soft,idh,idr,idv,I,J,K,idter,idhost;
+ 
+   BEGIN
+
+& VARIABILI GLOBALI
+
+		N_Hosts := GET(INTEGER);    
+		N_Router:= GET(INTEGER);
+		N_Vie:=GET(INTEGER);
+	    N_soft:=GET(INTEGER);
+	   
+	    NHTEST:= N_Hosts;
+	    NRTEST:=N_Router;
+	    NVTEST:=N_Vie;
+	    NSOFTW:=N_soft;
+	   
+	    LINE_CAP:=GET(REAL); 
+	    REC_CAP:= GET(REAL);
+	    CAP_BUF:= GET(REAL); 
+	    NewLine;
+	    T_MAX:=GET(REAL);
+	    TEMPO := GET(REAL);
+	    PERIODO:=GET(REAL);
+	    NewLine;
+   
+& GENERAZIONE ROUTERS
+
+	  IF (N_Router > 0) THEN         
+	       FOR I:=1 STEP 1 UNTIL N_Router DO BEGIN    
+	       idr :=GET(INTEGER);                                        
+	       ROUTER#(idr):=NEW(ROUTER,idr,GET(INTEGER));                     
+	       WITH ROUTER#(idr) DO BEGIN
+	       ROUTER#(idr).RATE := GET(REAL);
+	       ROUTER#(idr).P_ERR := GET(REAL);
+	       END;
+	 NewLine; 
+ END;
+
+& GENERAZIONE VIE E CONNESSIONI A ROUTER DI USCITA
+
+ IF (N_Vie > 0) THEN         
+   FOR I:=1 STEP 1 UNTIL N_Vie DO BEGIN       
+   idv :=GET(INTEGER);                                      
+   VIA#(idv):=NEW(VIA,idv,GET(REAL));  
+      WITH VIA#(idv) DO BEGIN
+      idr:=GET(INTEGER);
+      NEXT_R:=ROUTER#(idr).CPU;
+      END;
+ NewLine;
+ END;
+
+& ISTRADAMENTI ROUTER->ROUTER                      
+
+    FOR I:=1 STEP 1 UNTIL N_Router DO BEGIN
+    idr:=GET(INTEGER);
+	WITH ROUTER#(idr) DO BEGIN 	  
+	     FOR J:=1 STEP 1 UNTIL N DO BEGIN
+	 	K:=GET(INTEGER); 
+		INSTR(J):=VIA#(K).CANALE;
+		PROB(J):=GET(REAL);
+		END;
+                END;
+	NewLine;
+    END;
+
+& GENERAZIONE HOSTS E LINE_HR
+
+   IF (N_Hosts > 0) THEN          		       
+   FOR I:=1 STEP 1 UNTIL N_Hosts DO BEGIN
+        idh:=GET(INTEGER);                                        
+        HOSTS#(idh):=NEW(HOST,idh);
+        WITH HOSTS#(idh) DO BEGIN
+           
+	   HOSTS#(idh).T_EMI_I := GET(REAL);
+	   HOSTS#(idh).T_EMI_A := GET(REAL);
+	   HOSTS#(idh).T_REC_I := GET(REAL); 
+	   HOSTS#(idh).T_REC_A := GET(REAL); 
+	   HOSTS#(idh).TIME_OUT := GET(REAL); 
+	   HOSTS#(idh).WIN_SIZE := GET(INTEGER);
+	   HOSTS#(idh).LI := GET(INTEGER);
+	   HOSTS#(idh).SSO := GET(INTEGER);
+	   HOSTS#(idh).LA := GET(INTEGER);
+	   END;
+    
+	LINE_HR#(idh):=NEW(LINE_HR,GET(REAL));        
+
+& CONNESSIONI ROUTER-HOST
+
+    idr:=GET(INTEGER);			 
+    HOSTS#(idh).ID_R := idr;
+    ROUTER#(idr).S(idh):=HOSTS#(idh).ACCESS_R;  
+    NewLine;
+    END;
+ 
+& CONNESSIONI HOST-ROUTER
+
+      IF (N_Hosts > 0) THEN          		       
+      FOR I:=1 STEP 1 UNTIL N_Hosts DO BEGIN
+	   HOSTS#(I).NETWORK:=LINE_HR#(I).R;
+	                           
+         LINE_HR#(I).ROUT:=ROUTER#(HOSTS#(I).ID_R).CPU;
+	 END;      
+    
+     
+&--------------------------------------------------
+& COSTRUZIONE TERMINALE E CONNESSIONI TERMINAL-HOST
+&--------------------------------------------------
+
+IF (N_Hosts > 0) THEN
+FOR I:=1 STEP 1 UNTIL N_Hosts DO 
+BEGIN
+  	idter := GET(INTEGER); 
+	TERM#(idter):=NEW(TERMINAL,idter);
+     	WITH TERM#(idter) DO BEGIN
+           TERM#(idter).ACTIVES := GET(BOOLEAN);
+           TERM#(idter).NAME := GET(STRING);
+	   PRINT ("GEN",TERM#(idter).ACTIVES, TERM#(idter).NAME); 
+	   TERM#(idter).REQLENGHT := GET(INTEGER);
+           TERM#(idter).PROCESS := GET(REAL);
+	   TERM#(idter).PROC_D := GET(REAL);
+     	END;
+        LINE_TH#(idter):=NEW(LINE_TH,GET(REAL));        
+	
+& CONNESSIONI HOST-TERMINAL   
+    
+	 idhost:=GET(INTEGER);
+	 TERM#(idter).ID_H := idhost;
+         HOSTS#(idhost).HOTE:=LINE_TH#(idter).HQ;
+	 LINE_TH#(idter).TIN:=TERM#(idter).ACCESS_H;
+         NewLine;
+	END;
+
+
+& CONNESSIONI TERMINAL-HOST
+
+        IF (N_Hosts > 0) THEN          		       
+        FOR I:=1 STEP 1 UNTIL N_Hosts DO BEGIN
+	   TERM#(I).PORTA:=LINE_TH#(I).QH;
+	   LINE_TH#(I).TOUT:=HOSTS#(TERM#(I).ID_H).USER;
+END; 
+
+&--------------------------------------------------
+& COSTRUZIONE ARRY SOFTWARE
+&--------------------------------------------------    
+ IF (N_soft > 0) THEN
+  FOR I:=1 STEP 1 UNTIL (N_soft) DO BEGIN
+  	SW#(I):=NEW (SOFTWARE);
+  	SW#(I).IDS:=GET(INTEGER);
+  	SW#(I).EXIT:=GET(INTEGER);
+	SW#(I).ROLE:=GET(INTEGER);
+  	IF (SW#(I).IDS<>0) THEN BEGIN
+  		SW#(I).FA:= NEW (FILE);
+  		FILASSIGN(SW#(I).FA,GET(STRING));    
+  		END
+  	ELSE 
+		IF(HOSTS#(SW#(I).EXIT).SSO=1)THEN BEGIN
+  		SW#(I).FA:= NEW (FILE);
+  		FILASSIGN(SW#(I).FA,GET(STRING));    
+  		END
+		ELSE
+  		SW#(I).FA:= SW#(GET(INTEGER)).FA;
+  	NewLine;
+  	END;     
+
+
+&-------------
+        END; 
+
+& LETTURA MODELLO DA FILE
+
+/DECLARE/ FILE H;
+/EXEC/ BEGIN
+	  FILASSIGN(H,"model.dat");
+	  OPEN(H,1);
+             END;
+
+/CONTROL/ UNIT = GET(H); 
+/EXEC/ BEGIN
+           BuildMod;
+           CLOSE(H);
+           END;            
+
+& INIZIALIZZAZIONE DEI FILE *.STS
+
+/DECLARE/ FILE HOS,ROT,LIN,TER,ROUND,RES;
+          INTEGER IH,IR,IL;
+          
+/EXEC/ BEGIN
+	  FILASSIGN(HOS,"Hosts.sts");
+	  FILASSIGN(ROT,"Routers.sts");
+	  FILASSIGN(LIN,"Lines.sts");
+	  FILASSIGN(TER,"Terminals.sts");
+      FILASSIGN(ROUND,"RTT.sts"); 
+      FILASSIGN(RES,"RES.sts"); 
+      
+        OPEN(TER,2);
+	    OPEN(HOS,2);
+	    OPEN(ROT,2);
+	    OPEN(LIN,2);
+        OPEN(ROUND,2);
+        OPEN(RES,2);
+
+                 FOR IH:=1 STEP 1 UNTIL NHTEST DO BEGIN
+	                WRITE(HOS,"HOST",IH); 
+                    WRITE(HOS," ");                
+	                END;      
+	 WRITELN(HOS);
+	
+                 FOR IR:=1 STEP 1 UNTIL NRTEST DO BEGIN
+	                WRITE(ROT,"ROUTER",IR); 
+                    WRITE(ROT," ");                
+	                END;      
+	 WRITELN(ROT);
+
+                 FOR IL:=1 STEP 1 UNTIL NVTEST DO BEGIN
+	                WRITE(LIN,"VIA",IL); 
+                    WRITE(LIN," ");                
+	 END;      
+	 WRITELN(LIN);
+	 
+    END;
+
+
+/DECLARE/ 
+PROCEDURE NETTEST;
+INTEGER I,J;
+INTEGER FLAG;
+
+BEGIN
+                  FOR I:=1 STEP 1 UNTIL NHTEST DO BEGIN
+                  WRITE(HOS,HOSTS#(I).USER.NBOUT);
+	          WRITE(HOS," ");
+                  END;
+                  WRITELN(HOS);
+
+                  FOR I:=1 STEP 1 UNTIL NRTEST DO BEGIN
+                  WRITE(ROT,ROUTER#(I).CPU.NBOUT);
+	  WRITE(ROT," ");
+                  END;
+                  WRITELN(ROT);
+
+                  FOR I:=1 STEP 1 UNTIL NVTEST DO BEGIN
+                  WRITE(LIN,VIA#(I).CANALE.NBOUT);
+                  WRITE(LIN," ");
+	  END;
+                  WRITELN(LIN);
+
+
+         WRITELN(TER,"*************************************");
+         WRITELN(TER,"      Tempo di simulazione:",TIME);
+         WRITELN(TER,"*************************************");
+          FOR I:=1 STEP 1 UNTIL NHTEST DO BEGIN
+                 WRITELN(TER,"-------------------------------------");
+	         WRITELN(TER,"             TERMINAL ",I); 
+                 WRITELN(TER,"-------------------------------------");
+                 WRITE(TER,"RICHIESTE EMESSE: ");
+                  WRITELN(TER,TERM#(I).DISK.NBOUT(EMISSION));
+                  WRITE(TER,"RICHIESTE RICEVUTE: ");
+                  WRITELN(TER,TERM#(I).DISK.NBOUT(RICHIN));
+                   WRITE(TER,"RISPOSTE RICEVUTE:");
+                  WRITELN(TER,TERM#(I).DISK.NBOUT(RISPOSTA));
+                    WRITE(TER,"TOTALE: ");
+                  WRITELN(TER,TERM#(I).DISK.NBOUT);
+                 WRITELN(TER);
+	  END;
+                  WRITELN(TER);
+
+	 WRITELN(ROUND,"*************************************");
+         WRITELN(ROUND,"      Tempo di simulazione:",TIME);
+         WRITELN(ROUND,"*************************************");
+         FOR I:=1 STEP 1 UNTIL NHTEST DO BEGIN
+             WRITE(ROUND,"SORGENTE:",I);
+             FOR J:=1 STEP 1 UNTIL NHTEST DO BEGIN 
+                IF (RTT(I,J)<>0) THEN
+                BEGIN
+                   FLAG:=1
+                   WRITELN(ROUND);
+                   WRITE(ROUND," DESTINAZIONE: ",J);   
+                   WRITE(ROUND," RTT: ",RTT(I,J));
+                   WRITELN(ROUND," ");
+                END
+             END;
+                  IF (FLAG = 0) THEN WRITELN(ROUND," NESSUNA RICHIESTA INVIATA ");  
+                  FLAG:=0;
+                  WRITELN(ROUND," ");
+          END;
+                  WRITELN(ROUND);
+
+
+
+ & PER AVERE I TEMPI DI SIMULAZIONE E I RELATIVI RTT TRA I TERMINALI 4 E 8
+
+                   WRITE(RES,TIME, " ; ");
+                   WRITELN(RES,RTT(4,8),";");
+    
+END;
+
+/CONTROL/  
+CLASS=ALL QUEUE;
+TMAX=T_MAX; 
+PERIOD=PERIODO;
+TEST=NETTEST;
+&TRACE=0,T_MAX; 
+/EXEC/ 
+	SIMUL;
+/END/

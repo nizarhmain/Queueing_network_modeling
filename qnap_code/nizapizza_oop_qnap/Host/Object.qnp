@@ -1,0 +1,60 @@
+& ****************************
+& DEFINIZIONE DELL' OGGETTO HOST
+&****************************
+
+ OBJECT HOST(ID);     
+	& USER: riceve i dati dal terminale tramile la linea_th e li inoltra alla coda Control
+	& CONTROL: simula la finestra scorrevole(sliding window) del protocollo TCP, chiede i diritti di passaggio al semaforo WINDOW e inoltra le informazione alla coda PROTOCOL
+	& PROTOCOL : Coda principale dell'host, nella gestione delle web application richiama la procedura PROT_WEB. A seconda del lato dell'applicazione si occupa di ricever gli ACK di ricezione avvenuta, elimina i pacchetti dal buffer e gestisce i numeri di sequenza. Inoltra anche al terminale sovrastante i pacchetti di dati in entrata dalla rete traminte il puntatore HOTE che richiama la coda HQ della linea_th.
+	QUEUE USER,CONTROL,PROTOCOL;	             		 
+	
+	& ACCESS_E : Gestisce i pacchetti in uscita dall'host, richiama la procedura ACC_EMI che fissa la lunghezza dei pacchetti e i tempi per simulare la trasmissione fisica verso la rete. Inoltre tramite il puntatore NETWORK si inoltra il pacchetto sulla coda R della linea_hr.
+	& ACCESS_R : Gestisce i pacchetti in entrata, richiama la procedura ACC_REC che fissa la lunghezza dei pachetti e i tempi per simulare la ricezione fisica del pacchetto.
+	& WINDOW : coda di tipo semaforo che gestisce e dispensa i diritti di passaggio ai pachetti, richiamata dalla coda CONTROL.
+	& TIMER : Coda che memorizza i pacchetti trasmessi, nel caso di perdite e di pacchetti o ack non arrivati in tempo si manda il pachetto salvato sulla coda PROTOCOL.
+	& WEBTIMER : Attiva solo nei casi di web application, ha la stessa funzione di TIMER ma gestice webapp.
+
+	QUEUE ACCESS_E,ACCESS_R,WINDOW,TIMER,WEBTIMER;
+	
+	& Puntatore alla coda r della linea_hr che collega gli host con i router; richiamato da ACCESS_E
+	REF QUEUE NETWORK;
+	
+	& Puntatore alla coda hq della linea_th che collega gli host con i terminal; richiamato da PROTOCOL
+	REF QUEUE HOTE;   	     	 	
+	
+	& Identificativo dell host
+	INTEGER ID;				
+	
+	& Identificativo del router direttamente connesso all host
+	INTEGER ID_R;
+	
+	& Dimensione della finestra scorrevole del protocollo TCP.
+	INTEGER WIN_SIZE;	
+	
+	&LI: lunghezza di un pacchetto di traffico standard, è calcolato anche il ritardo causato dalle code di accesso alla rete ACCESS_E e ACCESS_R
+	&LA: Lunghezza di un ack di traffico standard, è calcolato il ritatrdo causato dall'accesso fisico alla rete;
+	INTEGER LI,LA;	     
+	
+	& Valore che indica se il sistema SSO è attivo o meno
+	INTEGER SSO;        	               		  
+	
+	& T_EMI_I : tempo impiegato per emettere un byte di un packet sulla rete.
+	& T_EMI_A : tempo impiegato per emettere un byte di un ack sulla rete
+	REAL T_EMI_I,T_EMI_A;				 
+	
+	& T_REC_I : tempo per ricever un byte di un packet
+	& T_REC_A : tempo per ricevere un byte di un ack
+	REAL T_REC_I,T_REC_A;  			                 
+	
+	& Tempo di time-per il traffico standard, in caso di superamento del time-out si passa alla ritrasmissione del pacchetto
+	REAL TIME_OUT;	
+	
+	& PAK Riferimento ad un pacchetto di traffico standard, nello specifico si usa nella gestione di dati
+	& RISP Riferimento ad un pacchetto di traffico standard, corrisponde ad una risposta.
+	REF PACKET PAK, RISP;				 
+	
+	& Presente solo nel caso di web application, fa riferimento ad una webapp
+	REF WEBAPP WA; &&Utilizzato solo per le web application
+ END;
+
+

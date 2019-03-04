@@ -1,0 +1,12 @@
+&**************************************************
+& STAZIONE DELLA LINEA HOST-ROUTER E TERMINAL-HOST
+&**************************************************
+
+/STATION/
+ NAME = *LINE_HR.R;	
+ & Si calcola il tempo costante relativo alla trasmissione del pacchetto che verrà, poi inoltrato su ROUT, puntatore alla coda del Router
+ SERVICE = BEGIN 
+			CST(T);
+		   END
+
+ TRANSIT = ROUT; 	     	

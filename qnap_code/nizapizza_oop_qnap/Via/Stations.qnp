@@ -1,0 +1,10 @@
+
+
+ &*********************************
+& STAZIONE DELLA LINEA ROUTER-ROUTER
+&*********************************
+
+/STATION/
+	NAME=*VIA.CANALE;
+	SERVICE= CST(TEM);
+	TRANSIT=NEXT_R;                    

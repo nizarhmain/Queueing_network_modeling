@@ -1,0 +1,13 @@
+
+&******************************************************
+& DEFINIZIONE DELL'OGGETTO LINE_HR: Il collegamento Host-Router
+&******************************************************
+
+  OBJECT LINE_HR(T); 		
+	& Coda che simula il ritardo di trasmissione causato dal collegamento tra host e router, inoltra i pacchetti alla coda cpu del router tramite il puntatore ROUT
+	QUEUE R;          	                    
+	& Puntatore alla coda cpu del router, viene richiamato della coda R           
+	REF QUEUE ROUT;
+	& Tempo richiesto per la trasmissione
+	REAL T;	          	 
+  END; 

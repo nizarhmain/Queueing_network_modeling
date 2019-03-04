@@ -1,0 +1,38 @@
+
+&******************************************************************
+& DEFINIZIONE DELL' OGGETTO SOFTWARE
+&******************************************************************
+OBJECT SOFTWARE;
+
+	& PROGRAM : gestisce la creazione delle webapp, assegna anche i valori di porta di destinazione e di origine, leggendo da file tutti i dati necessari.
+	& SERVIZIO : Coda principale del software, inizialmente riconosce se il pacchetto si trova in un client o in un server(anche SSO se presente) e, a seconda del caso, crea e invia il cookie di autenticazione, la risposta server, gestisce il download dei file e svuota il buffer.
+	QUEUE PROGRAM,SERVIZIO;
+
+	& EXIT: Identificativo del terminal agganciato al software, corrisponde anche all’host agganciato al terminal.
+	INTEGER EXIT;
+
+	& Identifica il ruolo del software, ogni software usato nella simulazione di web application avrà un ruolo, il client avrà sempre ruolo 1 metre il server SSO, quand presente, avrà ruolo 3. Questi valori sono indipendenti dall'id del terminal e sono usati all'interno della simulazione anche per no creare confusione con gli id
+
+	INTEGER ROLE;
+
+	& IDS: Identificativo del software, può assumere 0 o 1, il primo caso è per i server, il secondo per i client
+	INTEGER IDS;
+	
+	& Puntate al file "server.app" che descrive il comportamento delle webapp, la quantità di cpu, disco e terminale usata da client e server.
+	REF FILE FA;
+
+	&Riferemento ad una webapp, generalmente usato per creare ed inviare webapp standard
+	REF WEBAPP WA;
+
+	& Buffer di appoggio per permettere di rielabolare gli ID di sorgente e destinazione una volta arrivato il paccheto nel software
+	INTEGER BUF;& Buffer di appogio per permettere lo scambio di PROGRAM e destinazione
+	
+	& Numero di sequenza di controllo, generalmente impostato come numero di sequenza dell'ultimo pacchetto arrivato al software
+	INTEGER C_SEQ_N;
+	
+	& Tempo di inizio dell'applicazione
+	REAL RUNTIME;
+END;
+
+
+

@@ -1,0 +1,174 @@
+
+
+/STATION/
+    NAME = *TERMINAL.SCH;
+    SERVICE(WEBAP) = BEGIN
+		   	WITH (CUSTOMER::WEBAPP) DO BEGIN
+		IF (L=1) THEN 
+               BEGIN 
+			    IF (OP=0) THEN TRANSIT (SW#(DEST_NP).SERVIZIO);
+				IF (OP=12) THEN BEGIN 
+               		OP:=1;
+               		TRANSIT (CPU);
+				END;
+				IF (OP=1) THEN BEGIN 
+               		OP:=2;
+               		TRANSIT (DISK);
+               		END;
+				IF (OP=2) THEN BEGIN
+               		OP:=3;
+               		TRANSIT (TERM);
+               		END;
+               	IF (OP=3) THEN BEGIN
+               		OP:=1;
+               		TRANSIT (PORTA);
+               		END;
+               	IF (OP=4) THEN BEGIN
+               		 OP:=5;
+               		 TRANSIT (CPU);
+               		 END;
+               	IF (OP=5) THEN BEGIN
+               		OP:=6;
+               		TRANSIT (DISK);
+               		END;
+				IF (OP=6) THEN BEGIN
+               		OP:=0;
+               		TRANSIT (TERM);
+               	END;
+               		 
+               END
+         ELSE
+                BEGIN 
+				IF (OP=0) THEN TRANSIT (SW#(DEST_NP).SERVIZIO);
+				IF (OP=1) THEN BEGIN 
+               		OP:=2;
+               		TRANSIT (CPU);
+				END;
+				IF (OP=2) THEN BEGIN 
+               		OP:=3;
+               		TRANSIT (DISK);
+               		END;
+				IF (OP=3) THEN BEGIN
+				    OP:=4;
+               		TRANSIT (TERM);
+               		END;
+               	IF (OP=4) THEN 
+					IF (TYPE="risweb") THEN BEGIN
+						TRANSIT (SW#(DEST_NP).SERVIZIO);
+						END
+					ELSE BEGIN
+							TRANSIT (PORTA);
+						 END;
+				
+                IF (OP=5) THEN BEGIN 
+               		OP:=6;
+               		TRANSIT (CPU);
+			END;
+		IF (OP=6) THEN BEGIN 
+               		OP:=7;
+               		TRANSIT (DISK);
+               		END;
+               	IF (OP=7) THEN BEGIN
+               		OP:=0;
+               		TRANSIT (TERM);
+               		END;
+               
+               END;
+	END;
+	END;
+	
+	 
+
+	
+
+/STATION/
+ NAME = *TERMINAL.CPU;
+ SERVICE (WEBAP) = BEGIN
+	WITH (CUSTOMER::WEBAPP) DO BEGIN
+ 		IF (L=1) THEN 
+		 	CST(BCPU*PROCESS)
+ 		ELSE
+ 			CST(ACPU*PROCESS);
+ 		TRANSIT (SCH);
+ 		END;
+ 	END;
+
+ SERVICE = EXP(PROCESS);
+ TRANSIT = DISK;
+
+
+
+ /STATION/
+ NAME = *TERMINAL.DISK;
+ SERVICE(WEBAP) = BEGIN
+		WITH (CUSTOMER::WEBAPP) DO BEGIN
+ 	    	IF (L=1) THEN 
+				CST(BD*PROC_D)
+ 	    	ELSE
+            	CST(AD*PROC_D);
+            	TRANSIT (SCH);
+            	END;
+	   END;
+
+SERVICE(EMISSION) = BEGIN
+	        EXP(PROC_D);
+            TRANSIT(PORTA,EMISSION);
+            END;
+ SERVICE(RICHIN) = BEGIN
+	        EXP(PROC_D);
+            TRANSIT(PORTA,RICHIN);
+            END;
+ SERVICE(RISPOSTA) = BEGIN
+	        EXP(PROC_D);
+            TRANSIT(OUT);
+            END;
+ TRANSIT = OUT;
+
+ 
+ /STATION/
+ NAME = *TERMINAL.TERM;
+ SERVICE (WEBAP) =  BEGIN
+			WITH (CUSTOMER::WEBAPP) DO EXP(AT);
+		    END;
+
+ TRANSIT = SCH;
+ 
+  
+ /STATION/
+ NAME = *TERMINAL.ACCESS_H;
+ SERVICE (WEBAP) =  WITH (CUSTOMER::WEBAPP) DO BEGIN
+		&PRINT("PASSO IN ACCESS_H");
+		IF L=0 THEN 
+			L:=1 
+		ELSE 
+			L:=0;
+ 		TRANSIT (SCH);
+ 		END;
+ SERVICE =  BEGIN
+ 			EXP((LUNGH*8)/CAP_BUF);  
+ 			TRANSIT(CPU);
+ END;
+
+
+/STATION/
+    NAME = *TERMINAL.UTENTE;
+    &INIT=0;
+    TYPE = SOURCE;
+    SERVICE = BEGIN
+    		IF (ACTIVES)THEN BEGIN
+                EXP(TEMPO*100);
+		RQ := NEW(REQUEST);
+	        RQ.ORIG:=IDT;
+                RQ.SIZE:= REQLENGHT;
+                DEST := RINT(1,NHTEST);
+                WHILE (TERM#(DEST).ACTIVES=FALSE) DO && Che al limite neanche serve
+                	DEST := RINT(1,NHTEST);
+                RQ.DESTI := DEST;
+                LUNGH := RQ.SIZE;
+ 	        TRANSIT(RQ,CPU,EMISSION);
+ 	        END
+ 	        ELSE
+ 	        CST(T_MAX); && Bloccaggio della PROGRAM
+	      END;
+    TRANSIT = OUT;  
+

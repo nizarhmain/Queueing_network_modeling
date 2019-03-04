@@ -1,0 +1,26 @@
+
+&******************************************************************
+& DEFINIZIONE DELL'OGGETTO VIA: CONNESSIONE HALF-DUPLEX ROUTER->ROUTER
+&******************************************************************
+
+ OBJECT VIA(ID,TEM);
+	& coda che simula il ritardo di tramissione causato dal collegamento tra i router. Inoltra i pacchetti alla coda cpu del router successivo a quello in cui si trova il pacchetto
+	QUEUE CANALE;                          	               
+	& Puntatore alla Queue cpu, viene richiamato dalla coda CANALE
+	REF QUEUE NEXT_R;
+	& Tempo richiesto per la trasmissione
+	REAL TEM;
+	& ID della via
+	INTEGER ID;
+ END;
+
+ 
+&******************************************************************
+& DEFINIZIONE DELL' OGGETTO REQUEST
+&******************************************************************
+CUSTOMER OBJECT REQUEST;
+     
+     INTEGER SIZE;
+     INTEGER ORIG;
+     INTEGER DESTI;
+END;

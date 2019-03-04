@@ -1,0 +1,46 @@
+&******************************************************************
+& DEFINIZIONE DELL' OGGETTO WEB APPLICATION
+&******************************************************************
+CUSTOMER OBJECT WEBAPP;
+	& AT: Stima del tempo che l’applicazione dovrà spendere nella fase per le operazioni I/O con l’utente;
+	& ACPU: Numero di operazioni richieste dalla CPU dell’host A.
+	& AD: Numero di accessi a disco richiesti dell’host A.
+	& N: Numero di byte trasmessi nella fase sulla rete;
+	& BCPU: Numero di operazioni richieste dalla CPU dell’host B.
+	& BD: Numero di accessi a disco richiesti dell’host B.
+	
+	INTEGER AT,ACPU,AD,N,BCPU,BD; 
+	& Operazioni richieste per fase a terminali (AT in ms),
+	& processore (ACPU), disco (AD), dell web terminal A,
+	& byte spediti sulla rete (N), operazioni richieste per fase 
+	& a processore (BCPU) e disco(BD) dell web terminal B;
+	
+	
+	& OP : Indica la prossima operazione da eseguire all’interno di una fase (es: accesso a disco, trasmissione sulla rete..).
+ 	& L: Indica il lato dell’applicazione, ovvero se si tratta del lato client(0) o del lato server(1.)
+	
+	INTEGER OP,L; & Tipo di operazione richiesta(CPU o Disk o ...) e lato dell'operazione(A o B)
+	
+	
+
+	& tempo di time-out, ovvero il tempo dopo la quale una trasmissione è considerata fallita, e viene ripetuta.
+	INTEGER WTOUT; && Tempo di ritrasmissione per le web application 
+	
+	& Indica la posizione del pacchetto sulla rete.
+	INTEGER SEQ_N;
+	
+	& APPDESTID : Identificativo della destinazione della webapp.
+	& APPDESTNP : Numero di porta della destinazione della webapp.
+	INTEGER APPDESTID,APPDESTNP;
+	
+	& SSO_ID: Identificativo del server SSO se presente.
+	& CLIENT: Intero che serve per identificare il client.
+	& SERVER: Intero che serve per identificare il server
+	INTEGER SSO_ID,CLIENT,SERVER,SSO;
+	
+	& SOUR_NP: Indica il software che ha prodotto il pacchetto, ovvero la porta nel protocollo TCP.
+	& DEST_NP: Indica il software a cui il pacchetto è indirizzato, ovvero la porta nel protocollo TCP.
+	INTEGER SOUR_NP,DEST_NP; & Software A e B dell'applicazione;
+	
+	INTEGER ID;
+END;

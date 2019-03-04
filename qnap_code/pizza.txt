@@ -1,0 +1,2268 @@
+ 
+  SIMULOG   ***  QNAP2  ***  ( 15-09-2000  ) V 9.4   
+  (C)  COPYRIGHT BY CII HONEYWELL BULL AND INRIA, 1986
+ 
+ 
+      1 &*****************************
+      2 & Oggetti.qnp
+      3 &*****************************
+      4 &
+      5 /DECLARE/
+      6  
+      7 &***************
+      8 &VARIABILI GLOBALI
+      9 &***************
+     10  INTEGER SCAMBIO;
+     11  INTEGER NH = 100;
+     12  INTEGER NR = 50;
+     13  INTEGER NV = 200;
+     14  INTEGER NW = 50;
+     15  INTEGER COUNT;
+     16  INTEGER NHTEST;
+     17  INTEGER NRTEST;
+     18  INTEGER NVTEST;
+     19  INTEGER NSOFTW;
+     20  INTEGER J,I;
+     21  INTEGER NPVAL;
+     22  INTEGER EXITSERVER;
+ (060301)  ==>WARNING (DECLARE) : THIS IDENTIFIER IS TOO LONG
+                                  (TRUNCATED) : EXITSERV
+     23  INTEGER ISOPEN; &Servirebbe a stabilire se il file � aperto o chiuso 
+e questo servirebbe a concludere l'applicazione
+     24  INTEGER APP;
+     25  
+     26  REAL TEMPO;
+     27  REAL T_MAX;
+     28  REAL PERIODO;
+     29  
+     30  CLASS EMISSION,RECEPT;
+     31  CLASS RICHIN,RISPOSTA;
+     32  CLASS BOOT,WEBAP; & Classi aggiunte che rappresenatno le web applicatio
+n
+     33  REAL LINE_CAP;
+     34  REAL REC_CAP;
+     35  REAL CAP_BUF;
+     36  INTEGER DEST, LUNGH;
+     37  
+     38  REAL TIME_ARR(NH,NH);
+     39  REAL TIME_PART(NH,NH);
+ (060301)  ==>WARNING (DECLARE) : THIS IDENTIFIER IS TOO LONG
+                                  (TRUNCATED) : TIME_PAR
+     40  REAL RTT(NH,NH);
+     41  
+     42  
+     43 &*****************
+     44 & ARRAY DI PUNTATORI
+     45 &*****************
+     46 INTEGER COOKIE#(NH);
+     47 REF HOST HOSTS#(NH);
+     48 REF LINE_HR LINE_HR#(NH);
+     49 REF ROUTER ROUTER#(NR);
+     50 REF VIA VIA#(NV);
+     51 REF TERMINAL TERM#(NH);
+     52 REF SOFTWARE SW#(NH); & Array di oggetti software
+     53 REF LINE_TH LINE_TH#(NH);
+     54  
+     55 & ***************************************
+     56 & DEFINIZIONE DEI CUSTOMERS
+     57 &****************************************
+     58  
+     59  & TYP : sottotipo del pacchetto
+     60  & TYPE : tipo del pacchetto
+     61  CUSTOMER STRING TYP, TYPE;
+     62  
+     63  & SOUR_ID ID dell'host sorgente
+     64  & DEST_ID dell'host di destinazione
+     65  CUSTOMER INTEGER SOUR_ID,DEST_ID;
+     66  
+     67  & Riferimento al customer e usato in alcune procedure.
+     68  REF CUSTOMER C;
+     69 & ****************************
+     70 & DEFINIZIONE DELL' OGGETTO HOST
+     71 &****************************
+     72  
+     73  OBJECT HOST(ID);
+     74 	& USER: riceve i dati dal terminale tramile la linea_th e li inoltra al
+la coda Control
+     75 	& CONTROL: simula la finestra scorrevole(sliding window) del protocollo
+ TCP, chiede i diritti di passaggio al semaforo
+     76 	& PROTOCOL : Coda principale dell'host, nella gestione delle web applic
+ation richiama la procedura PROT_WEB. A seconda
+     77 	QUEUE USER,CONTROL,PROTOCOL;
+     78 	
+     79 	& ACCESS_E : Gestisce i pacchetti in uscita dall'host, richiama la proc
+edura ACC_EMI che fissa la lunghezza dei pacchet
+     80 	& ACCESS_R : Gestisce i pacchetti in entrata, richiama la procedura ACC
+_REC che fissa la lunghezza dei pachetti e i tem
+     81 	& WINDOW : coda di tipo semaforo che gestisce e dispensa i diritti di p
+assaggio ai pachetti, richiamata dalla coda CONT
+     82 	& TIMER : Coda che memorizza i pacchetti trasmessi, nel caso di perdite
+ e di pacchetti o ack non arrivati in tempo si m
+     83 	& WEBTIMER : Attiva solo nei casi di web application, ha la stessa funz
+ione di TIMER ma gestice webapp.
+     84  
+     85 	QUEUE ACCESS_E,ACCESS_R,WINDOW,TIMER,WEBTIMER;
+     86 	
+     87 	& Puntatore alla coda r della linea_hr che collega gli host con i route
+r; richiamato da ACCESS_E
+     88 	REF QUEUE NETWORK;
+     89 	
+     90 	& Puntatore alla coda hq della linea_th che collega gli host con i term
+inal; richiamato da PROTOCOL
+     91 	REF QUEUE HOTE;
+     92 	
+     93 	& Identificativo dell host
+     94 	INTEGER ID;
+     95 	
+     96 	& Identificativo del router direttamente connesso all host
+     97 	INTEGER ID_R;
+     98 	
+     99 	& Dimensione della finestra scorrevole del protocollo TCP.
+    100 	INTEGER WIN_SIZE;
+    101 	
+    102 	&LI: lunghezza di un pacchetto di traffico standard, è calcolato anche
+ il ritardo causato dalle code di accesso alla r
+    103 	&LA: Lunghezza di un ack di traffico standard, è calcolato il ritatrdo
+ causato dall'accesso fisico alla rete;
+    104 	INTEGER LI,LA;
+    105 	
+    106 	& Valore che indica se il sistema SSO è attivo o meno
+    107 	INTEGER SSO;
+    108 	
+    109 	& T_EMI_I : tempo impiegato per emettere un byte di un packet sulla ret
+e.
+    110 	& T_EMI_A : tempo impiegato per emettere un byte di un ack sulla rete
+    111 	REAL T_EMI_I,T_EMI_A;
+    112 	
+    113 	& T_REC_I : tempo per ricever un byte di un packet
+    114 	& T_REC_A : tempo per ricevere un byte di un ack
+    115 	REAL T_REC_I,T_REC_A;
+    116 	
+    117 	& Tempo di time-per il traffico standard, in caso di superamento del ti
+me-out si passa alla ritrasmissione del pacchett
+    118 	REAL TIME_OUT;
+    119 	
+    120 	& PAK Riferimento ad un pacchetto di traffico standard, nello specifico
+ si usa nella gestione di dati
+    121 	& RISP Riferimento ad un pacchetto di traffico standard, corrisponde ad
+ una risposta.
+    122 	REF PACKET PAK, RISP;
+    123 	
+    124 	& Presente solo nel caso di web application, fa riferimento ad una weba
+pp
+    125 	REF WEBAPP WA; &&Utilizzato solo per le web application
+    126  END;
+    127  
+    128  
+    129  
+    130 &*******************************************************
+    131 & PROCEDURE PER DESCRIVERE I DIFFE3RENTI SERVIZI DELLE STAZIONI
+    132 &*******************************************************
+    133 	PROCEDURE GETNPVAL(DEST_ID);
+    134 		INTEGER DEST_ID;
+    135 		BEGIN
+    136 			FOR J:=1 STEP 1 UNTIL NSOFTW DO BEGIN
+    137 				IF SW#(J).EXIT=DEST_ID THEN NPVAL:=J;
+                     |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    138 			END;
+    139 		END;
+    140  
+    141  
+    142 &*******************************************************
+    143 & PROCEDURE DI SERVIZIO
+    144 &*******************************************************
+    145  
+    146     PROCEDURE NewLn (FI);
+    147     REF FILE FI;
+    148     STRING S;
+    149     BEGIN
+    150       	S:=GETLN(FI,STRING,2);
+    151 	IF INDEX(S,";")=0 THEN BEGIN
+    152 	WRITELN(" (!), not found:[",S,"]");
+    153 	ABORT;
+    154      END;
+    155  
+    156     END;
+    157  
+    158  
+    159 &*******************************************************
+    160 & COPY_P: SALVATAGGIO TEMPORANEO DELLA COPIA DI UN PACCHETTO NEL TIMER
+    161 &*******************************************************
+    162  PROCEDURE COPY_P(C,SOUR,DEST);
+    163 	INTEGER SOUR,DEST;
+    164 	REF CUSTOMER C;
+    165 	REF HOST RH;
+    166 	BEGIN
+    167 		WITH CUSTOMER DO BEGIN
+    168 		RH:= INCLUDING (QUEUE)::HOST;
+    169 		C.DEST_ID:= DEST;
+    170 		C.SOUR_ID:= SOUR;
+    171 		TRANSIT(C,RH.TIMER);
+    172 		END;
+    173 	END;
+    174  
+    175  
+    176 &***************************************************************
+    177 & COPY_TER: SALVATAGGIO DELLA COPIA DI UNA RISPOSTA NEL TERMINAL
+    178 &***************************************************************
+    179  
+    180 PROCEDURE COPY_TER(C,SOUR,DEST);
+    181 	INTEGER SOUR,DEST;
+    182 	REF CUSTOMER C;
+    183 	REF HOST RH;
+    184 	BEGIN
+    185 	WITH CUSTOMER DO BEGIN
+    186 		RH:= INCLUDING (QUEUE)::HOST;
+    187 		C.DEST_ID:= DEST;
+    188 		C.SOUR_ID:= SOUR;
+    189 		TIME_ARR(DEST,SOUR):= TIME;
+    190 		RTT(SOUR,DEST):=TIME_ARR(DEST,SOUR)-TIME_PART(SOUR,DEST);
+    191 		TRANSIT(C,RH.HOTE,RISPOSTA);
+    192 		END;
+    193 	END;
+    194  
+    195 &***************************************************************
+    196 & COPY_RIC: SALVATAGGIO DELLA COPIA DI UNA RISPOSTA NEL TERMINAL
+    197 &***************************************************************
+    198 PROCEDURE COPY_RIC(C,SOUR,DEST);
+    199 	INTEGER SOUR,DEST;
+    200 	REF CUSTOMER C;
+    201 	REF HOST RH;
+    202 	BEGIN
+    203 		WITH CUSTOMER DO BEGIN
+    204 			RH:= INCLUDING (QUEUE)::HOST;
+    205 			C.DEST_ID:= DEST;
+    206 			C.SOUR_ID:= SOUR;
+    207 			TRANSIT(C,RH.HOTE,RICHIN);
+    208 	END;
+    209 	END;
+    210  
+    211 &*******************************************************
+    212 &  DESCRIZIONE DEL [ PROTOCOLLO IN EMISSIONE ]
+    213 &*******************************************************
+    214  
+    215  PROCEDURE PROT_EMI(TEI,TEA);
+    216 	REAL TEI,TEA;
+    217 	REF HOST RH;
+    218 	BEGIN
+    219 		WITH CUSTOMER DO BEGIN
+    220 		RH:= INCLUDING (QUEUE)::HOST;
+    221 		IF TYP = "ack" THEN
+    222 			BEGIN
+    223 				EXP(TEA);
+    224 				TRANSIT(RH.ACCESS_E);
+    225 			END
+    226 		ELSE
+    227 			BEGIN
+    228 				TYP:="info";
+    229 				EXP(TEI);
+    230 				COPY_P(NEW(CUSTOMER),SOUR_ID,DEST_ID);
+    231 				TRANSIT(RH.ACCESS_E);
+    232 			END;
+    233 		END;
+    234 	END;
+    235 &*******************************************************
+    236 &  DESCRIZIONE DEL [ PROTOCOLLO IN RICEZIONE ]
+    237 &*******************************************************
+    238  
+    239  
+    240  PROCEDURE PROT_REC(TRI,TRA,HOST_ID);
+    241 	REAL TRI,TRA;
+    242 	INTEGER HOST_ID;
+    243 	REF HOST RH;
+    244 	BEGIN
+    245 		WITH CUSTOMER DO BEGIN
+    246 		RH:= INCLUDING (QUEUE)::HOST;
+    247 	IF TYP = "info" THEN
+    248 		BEGIN
+    249 			IF TYPE = "rich" THEN
+    250 				BEGIN
+    251 					TYP:="ack";
+    252 					TYPE:="risp";
+    253 					DEST_ID:= SOUR_ID;
+    254 					SOUR_ID:= HOST_ID;
+    255 					EXP(TRI);
+    256 					COPY_RIC(NEW(CUSTOMER),SOUR_ID,DEST_ID);
+    257 					TRANSIT(RH.PROTOCOL,EMISSION);
+    258 				END
+    259 			ELSE
+    260 				BEGIN
+    261 					TYP:="ack";
+    262 					DEST_ID:= SOUR_ID;
+    263 					SOUR_ID:=HOST_ID;
+    264 					EXP(TRI);
+    265 					COPY_TER(NEW(CUSTOMER),SOUR_ID,DEST_ID);
+    266 					TRANSIT(RH.PROTOCOL,EMISSION);
+    267 				END;
+    268 		END
+    269 	ELSE
+    270 		BEGIN
+    271 			EXP(TRA);
+    272 				IF (HOST.TIMER.FIRST<> NIL)THEN
+    273 					BEGIN
+    274 					TRANSIT(RH.TIMER.FIRST,OUT);
+    275 					V(RH.WINDOW);
+    276 					END;
+    277 				TRANSIT(OUT);
+    278 			END;
+    279 		END;
+    280 	END;
+    281  
+    282 &*******************************************************
+    283 &  DESCRIZIONE DEL [ PROTOCOLLO PER WEB APPLICATION]
+    284 &*******************************************************
+    285  PROCEDURE PROT_WEB(TEI,TEA);
+    286  REAL TEI,TEA;
+    287  REF HOST RH;
+    288  BEGIN
+    289  	WITH (CUSTOMER::WEBAPP) DO BEGIN
+                               |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    290 	RH:= INCLUDING (QUEUE)::HOST;
+    291  	IF SOUR_ID=RH.ID THEN
+    292 	 BEGIN && Si sfrutta il fatto che ogni terminale ha IDT=ID sell'host so
+ttostante per riconoscere che i dati hanno origi
+    293     		IF TYP= "app" THEN BEGIN
+    294      			EXP(TEI);
+    295      			RH.WA:= NEW (WEBAPP);
+                                  |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    296 				RH.WA.TYPE:="web";
+                 |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    297      			RH.WA.TYP:="app";
+                     |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    298      			&& Copia di tutti i dati
+    299      			RH.WA.AT:=AT;
+                     |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    300      			RH.WA.ACPU:=ACPU;
+                     |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    301      			RH.WA.AD:=AD;
+                     |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    302      			RH.WA.N:=N;
+                     |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    303      			RH.WA.BCPU:=BCPU;
+                     |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    304      			RH.WA.BD:=BD;
+                     |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    305      			RH.WA.OP:=OP;
+                     |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    306 				RH.WA.L:=L;
+                 |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    307 				RH.WA.WTOUT:=WTOUT;
+                 |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    308 				RH.WA.SEQ_N:=SEQ_N;
+                 |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    309 				RH.WA.SOUR_ID:=SOUR_ID;
+                 |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    310 				RH.WA.DEST_ID:=DEST_ID;
+                 |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    311 				RH.WA.SOUR_NP:=SOUR_NP;&se inverto queste due completa l'applicazion
+e
+                 |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    312 				RH.WA.DEST_NP:=DEST_NP;
+                 |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    313 	 		&& Copia pronta
+    314 	 		TRANSIT	(RH.WA,RH.WEBTIMER,WEBAP);
+                                             |
+ (050303)  ==>ERROR (COMPILE) : INCORRECT TYPE FOR AN OPERAND OR AN ARGUMENT
+    315      		TRANSIT (RH.ACCESS_E);
+    316     		END;
+    317     END
+    318    	ELSE && Dati che vengono da remoto
+    319 	BEGIN
+    320 	IF TYP="app" THEN
+    321 		BEGIN
+    322 				& Si controllo se il numero di sequenze NUMSEQ del pacchetto arrivat
+o è maggiore dell'ultimo memorizzato dal softwa
+    323 				PRINT ("NUMSEQ: ", SW#(DEST_NP).C_SEQ_N);
+                                         |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... DEST_NP
+    324     			IF (SEQ_N >SW#(DEST_NP).C_SEQ_N)THEN
+                       |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... SEQ_N
+    325     				BEGIN
+    326 					& andiamo sul buffer WEBTIMER (coda che nel caso si superi il tempo
+ WTOUT invia il pacchetto sulla coda PROTOCOL)
+    327 					& scrollendolo tutto con un while, e, se non si tratta della stessa
+ applicazione(caso attuale), si punta all'ultimo
+    328 					RH.WA:=(RH.WEBTIMER.FIRST)::WEBAPP;
+    329     				WHILE (RH.WA<>NIL) DO BEGIN
+    330     					IF DEST_NP=RH.WA.SOUR_NP THEN BEGIN  & Si identifica che si tra
+tta della stessa applicazione
+                          |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... DEST_NP
+    331     						V(RH.WINDOW);
+    332     						IF (RH.WA.NEXT=NIL) THEN BEGIN
+                           |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    333     								TRANSIT (RH.WA,OUT);
+    334     								RH.WA:=NIL;
+    335     							END
+    336     						ELSE BEGIN
+                     |
+ (050103)  ==>WARNING (COMPILE) : ";" HAS BEEN ADDED BEFORE THIS ELEMENT
+                     |
+ (050101)  ==>ERROR (COMPILE) : INCORRECT SYNTAX
+    337     						RH.WA:=(RH.WA.NEXT)::WEBAPP;
+    338     							TRANSIT (RH.WA.PREVIOUS,OUT);
+                                 |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    339     							END;
+    340    						END
+    341     					ELSE RH.WA:=(RH.WA.NEXT)::WEBAPP;
+                    |
+ (050103)  ==>WARNING (COMPILE) : ";" HAS BEEN ADDED BEFORE THIS ELEMENT
+                    |
+ (050101)  ==>ERROR (COMPILE) : INCORRECT SYNTAX
+    342 					END;
+    343 					EXP(TEA);
+               |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... EXP
+    344     		 		RH.WA:=NEW (WEBAPP);
+                  |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... RH
+    345     		 		RH.WA.SOUR_ID:=DEST_ID;
+                  |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... RH
+    346     		 		RH.WA.DEST_ID:=SOUR_ID;
+                  |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... RH
+    347     		 		RH.WA.DEST_NP:=SOUR_NP;
+                  |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... RH
+    348     		 		RH.WA.SOUR_NP:=DEST_NP;
+                  |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... RH
+    349     		 		RH.WA.N:=3; && Dimensione prefissata per gli ack
+                  |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... RH
+    350 					RH.WA.TYPE:="ack";
+              |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... RH
+    351 					RH.WA.ACPU:=10;
+              |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... RH
+    352 					RH.WA.AD:=10;
+              |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... RH
+    353 					RH.WA.AT:=10;
+              |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... RH
+    354 					RH.WA.BCPU:=10;
+              |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... RH
+    355 					RH.WA.BD:=10;
+              |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... RH
+    356     		 		RH.WA.SEQ_N:=SEQ_N;
+                  |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... RH
+    357     		 		RH.WA.TYP:="ack"; && anche gli ack devono avere seq_n per esser
+e riconosciuti
+                  |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... RH
+    358 					 & si manda sulla coda ACCESS_E con classe WEBAP
+    359     		 		TRANSIT (RH.WA,RH.ACCESS_E,WEBAP); && Invio dell'ack
+                       |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... TRANSIT
+    360 					SW#(DEST_NP).C_SEQ_N:=SEQ_N;
+               |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... SW#
+    361 					PRINT ("NUMSEQ: ", SW#(DEST_NP).C_SEQ_N);
+                 |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... PRINT
+    362 					& il pacchetto normale va invece mandato sul puntatore HOTE, ovvero
+ la coda HQ della linea
+    363 					TRANSIT (RH.HOTE);
+                   |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... TRANSIT
+    364     		 	END
+                  |
+ (060302)  ==>ERROR (DECLARE) : INCORRECT SYNTAX
+    365 				ELSE
+    366     			BEGIN
+    367 				PRINT("HO BUTTATO VIA UN PACCHETTO RITRASMESSO ", N);
+    368 				TRANSIT (OUT);
+                  |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... TRANSIT
+    369 				END;
+              |
+ (060302)  ==>ERROR (DECLARE) : INCORRECT SYNTAX
+    370 		END;
+            |
+ (060302)  ==>ERROR (DECLARE) : INCORRECT SYNTAX
+    371     	IF (TYP = "ack") THEN BEGIN
+              |
+ (060302)  ==>ERROR (DECLARE) : INCORRECT SYNTAX
+    372     			IF (SW#(DEST_NP).C_SEQ_N>SEQ_N)THEN TRANSIT (OUT) && Ack vecchio
+    373     			ELSE BEGIN& L'ack non inverte porta PROGRAM e destinazione, lavor
+ando solo a livello host
+    374 						RH.WA:=(RH.WEBTIMER.FIRST)::WEBAPP;
+    375     					WHILE (RH.WA<>NIL) DO
+                     |
+ (060302)  ==>ERROR (DECLARE) : INCORRECT SYNTAX
+    376 							BEGIN
+    377 							IF DEST_NP=RH.WA.SOUR_NP THEN BEGIN  & Si identifica che si tratt
+a della stessa applicazione
+    378 								V(RH.WINDOW);
+    379 								IF (RH.WA.NEXT=NIL) THEN BEGIN
+                 |
+ (060302)  ==>ERROR (DECLARE) : INCORRECT SYNTAX
+    380     									TRANSIT (RH.WA,OUT);
+    381     									RH.WA:=NIL;
+                      |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... RH
+    382     									END
+                       |
+ (060302)  ==>ERROR (DECLARE) : INCORRECT SYNTAX
+    383 								ELSE BEGIN
+    384 									RH.WA:=(RH.WA.NEXT)::WEBAPP;
+    385 									TRANSIT (RH.WA.PREVIOUS,OUT);
+                       |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... TRANSIT
+    386     								END;
+                      |
+ (060302)  ==>ERROR (DECLARE) : INCORRECT SYNTAX
+    387 	
+    388     							END
+                     |
+ (060302)  ==>ERROR (DECLARE) : INCORRECT SYNTAX
+    389 							ELSE
+    390 								RH.WA:=(RH.WA.NEXT)::WEBAPP;
+    391 							END;
+                 |
+ (060302)  ==>ERROR (DECLARE) : INCORRECT SYNTAX
+    392 						END;
+                |
+ (060302)  ==>ERROR (DECLARE) : INCORRECT SYNTAX
+    393     			TRANSIT (OUT);
+                     |
+ (060303)  ==>ERROR (DECLARE) : THIS TYPE IS UNKNOWN ... TRANSIT
+    394     	END;
+               |
+ (060302)  ==>ERROR (DECLARE) : INCORRECT SYNTAX
+    395 	END;
+           |
+ (060302)  ==>ERROR (DECLARE) : INCORRECT SYNTAX
+    396 END;
+          |
+ (060302)  ==>ERROR (DECLARE) : INCORRECT SYNTAX
+    397 END;
+          |
+ (060302)  ==>ERROR (DECLARE) : INCORRECT SYNTAX
+    398  
+    399  
+    400 &*******************************************************
+    401 &  TRASMISSIONE FISICA DELL' INFORMAZIONE
+    402 &*******************************************************
+    403  
+    404  PROCEDURE ACC_EMI(LENGTH_I,LENGTH_A,LENGTH_W);
+    405 	INTEGER LENGTH_I,LENGTH_A,LENGTH_W,LENGTH;
+    406 	BEGIN
+    407 		IF TYPE="web" THEN
+    408 			LENGTH:=LENGTH_W
+    409 		ELSE
+    410 			IF TYP = "ack" THEN
+    411 				LENGTH:= LENGTH_A
+    412 			ELSE
+    413 				LENGTH:= LENGTH_I;
+    414 				EXP((LENGTH*8)/LINE_CAP);
+    415 	END;
+    416  
+    417 &*******************************************************
+    418 &  RICEZIONE FISICA DELL' INFORMAZIONE
+    419 &*******************************************************
+    420 	
+    421  PROCEDURE ACC_REC(RLENGTHI,RLENGTHA,RLENGTHW);
+    422 	INTEGER RLENGTHI,RLENGTHA,RLENGTHW,LLENGTH;
+    423 	BEGIN
+    424 	IF TYPE="web" THEN
+    425 		LLENGTH:=RLENGTHW
+    426 	ELSE
+    427 		IF TYP = "info" THEN
+    428 			LLENGTH:= RLENGTHI
+    429 		ELSE
+    430 			LLENGTH:= RLENGTHA;
+    431 			EXP((LLENGTH*8)/REC_CAP);
+    432 	END;
+    433  
+    434  
+    435  
+    436  
+    437  
+    438  
+    439 & ****************************
+    440 & STAZIONI HOST
+    441 &******
+    442  
+    443 /STATION/
+    444  NAME  =  *HOST.USER;
+    445  SCHED = FIFO;
+    446  SERVICE(EMISSION) = BEGIN
+    447             EXP(TEMPO);
+    448             PAK := NEW(PACKET);
+                                    |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... PACKET
+    449             PAK.TYP:= "data";
+                       |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    450             PAK.TYPE:="rich";
+                       |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    451             PAK.SOUR_ID:= ID;
+                       |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    452 	    	PAK.DEST_ID:= DEST;
+                 |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    453             PAK.DIME := LUNGH;
+                       |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    454             PAK.BIRTH :=TIME;
+                       |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    455             TIME_PART(PAK.SOUR_ID,PAK.DEST_ID):= PAK.BIRTH;
+                                 |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    456  
+    457             TRANSIT(PAK,CONTROL,EMISSION);
+                                                 |
+ (050303)  ==>ERROR (COMPILE) : INCORRECT TYPE FOR AN OPERAND OR AN ARGUMENT
+    458            END;
+    459  SERVICE (RICHIN) = BEGIN
+    460                 EXP(TEMPO);
+    461 		RISP:= NEW(PACKET);
+                          |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... PACKET
+    462                 RISP.TYP := "data";
+                            |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    463                 RISP.TYPE := "risp";
+                            |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    464             	RISP.DEST_ID:= DEST_ID;
+                         |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    465                 RISP.SOUR_ID:= ID;
+                            |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    466 	    	RISP.DIME := LUNGH;
+                  |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    467             	RISP.BIRTH :=TIME;
+                         |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    468 	    	TRANSIT(RISP,CONTROL,RICHIN);
+                                          |
+ (050303)  ==>ERROR (COMPILE) : INCORRECT TYPE FOR AN OPERAND OR AN ARGUMENT
+    469  	       END;
+    470  SERVICE (WEBAP)= BEGIN
+    471 		WITH (CUSTOMER::WEBAPP) DO BEGIN
+                               |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    472 		&PRINT ("HOST:USER L=",L,"OP=",OP);
+    473 		TRANSIT (CONTROL);
+    474 		END;
+    475 		END;
+            |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    476  TRANSIT = OUT;
+    477  
+    478  
+    479  /STATION/
+    480  NAME = *HOST.CONTROL;
+    481  SERVICE = P(WINDOW);
+    482  TRANSIT = PROTOCOL;
+    483  
+    484  /STATION/
+    485  NAME = *HOST.WINDOW;
+    486  TYPE = SEMAPHORE,MULTIPLE(WIN_SIZE);
+    487  
+    488  /STATION/
+    489  NAME = *HOST.TIMER;
+    490  SERVICE= BEGIN
+    491 	   CST(TIME_OUT);
+    492 	   TYP:="data";
+    493 	   TRANSIT(PROTOCOL,EMISSION,1);
+    494 	   END;
+    495 	
+    496 	
+    497 /STATION/
+    498  NAME = *HOST.WEBTIMER;
+    499  SERVICE (WEBAP) = BEGIN
+    500  		WITH (CUSTOMER::WEBAPP) DO BEGIN
+                                |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    501  	   	CST(WTOUT);
+    502 		&PRINT ("WTOUT",WTOUT);
+    503  	   	TRANSIT (PROTOCOL);
+    504  	   	END;
+    505  	   END;
+               |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    506 	
+    507  /STATION/
+    508  NAME = *HOST.PROTOCOL;
+    509  SCHED = PRIOR;
+    510  SERVICE(EMISSION) =BEGIN
+    511 		PROT_EMI(T_EMI_I,T_EMI_A);
+    512 		    END;
+    513  SERVICE(WEBAP) = BEGIN
+    514 		PROT_WEB(T_EMI_I,T_EMI_A);
+    515 		END;
+    516  SERVICE(RICHIN) = BEGIN
+    517 			PROT_EMI(T_EMI_I,T_EMI_A);
+    518 		   END;
+    519  SERVICE(RECEPT) = BEGIN
+    520 			PROT_REC(T_REC_I,T_REC_A,ID);
+    521 		   END;
+    522  TRANSIT(RECEPT) = OUT;
+    523  
+    524  
+    525  
+    526  /STATION/
+    527  NAME = *HOST.ACCESS_E;
+    528  SERVICE = IF CUSTOMER IS WEBAPP THEN
+                                       |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    529 		BEGIN
+    530 		IF ((CUSTOMER::WEBAPP).TYPE="web") OR ((CUSTOMER::WEBAPP).TYPE="risweb
+") THEN
+                              |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    531 			BEGIN
+    532 				PRINT("*********************************");
+    533 				PRINT("        EMESSO PACCHETTO:        ");
+    534 				PRINT("*********************************");
+    535 				PRINT("- DIMENSIONE: ",(CUSTOMER::WEBAPP).N);
+                                                   |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    536 				PRINT("- TYPE: ", (CUSTOMER::WEBAPP).TYPE);
+                                              |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    537 				PRINT("- SOURID: ",(CUSTOMER::WEBAPP).SOUR_ID);
+                                               |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    538 				PRINT("- SOURNP: ",(CUSTOMER::WEBAPP).SOUR_NP);
+                                               |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    539 				PRINT("- DESTID: ",(CUSTOMER::WEBAPP).DEST_ID);
+                                               |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    540 				PRINT("- DESTNP: ",(CUSTOMER::WEBAPP).DEST_NP);
+                                               |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    541 				PRINT("- SEQNUM: ",(CUSTOMER::WEBAPP).SEQ_N);
+                                               |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    542 				PRINT("- WTOUT: ",(CUSTOMER::WEBAPP).WTOUT);
+                                              |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    543 				PRINT("- TIME: ",TIME);
+    544 				PRINT("*********************************");
+    545 			END
+    546 		ELSE
+    547 			BEGIN
+    548 				PRINT("DIM.EMESSO:",(CUSTOMER::WEBAPP).N,"TYPE ",TYPE," HOST NUMERO:
+ ",ID,"SEQNUM: ",(CUSTOMER::WEBAPP).SEQ_N);
+                                                |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    549 				PRINT("TIME: ",TIME);
+    550 			END;
+    551  		ACC_EMI(LI,LA,(CUSTOMER::WEBAPP).N);
+                 |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... ACC_EMI
+    552 		END
+            |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    553  		ELSE ACC_EMI(LI,LA,0);
+    554  & Una volta finita la procedura si inoltra su NETWORK che corrisponde a
+lla coda R della lINE_HR che permette il collega
+    555  TRANSIT=NETWORK;
+    556  
+    557  /STATION/
+    558  NAME = *HOST.ACCESS_R;
+    559  SERVICE = IF CUSTOMER IS WEBAPP THEN
+                                       |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    560 		BEGIN
+    561 			PRINT("DIM.RICEVUTO:",(CUSTOMER::WEBAPP).N,"TYPE ",TYPE,"HOST NUMERO:
+ ",ID,"SEQNUM: ",(CUSTOMER::WEBAPP).SEQ_N);
+                                                 |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    562 			ACC_REC(LI,LA,(CUSTOMER::WEBAPP).N)
+                                         |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    563 		END
+            |
+ (050103)  ==>WARNING (COMPILE) : ";" HAS BEEN ADDED BEFORE THIS ELEMENT
+    564  		ELSE
+    565 		 	ACC_REC(LI,LA,0);
+    566  TRANSIT=PROTOCOL;
+    567  
+    568  
+    569 &******************************************************
+    570 & DEFINIZIONE DELL'OGGETTO LINE_HR: Il collegamento Host-Router
+    571 &******************************************************
+    572  
+    573   OBJECT LINE_HR(T);
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... OBJECT
+    574 	& Coda che simula il ritardo di trasmissione causato dal collegamento t
+ra host e router, inoltra i pacchetti alla coda
+    575 	QUEUE R;
+             |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... QUEUE
+    576 	& Puntatore alla coda cpu del router, viene richiamato della coda R
+    577 	REF QUEUE ROUT;
+           |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... REF
+    578 	& Tempo richiesto per la trasmissione
+    579 	REAL T;
+            |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... REAL
+    580   END;
+            |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    581  
+    582  
+    583 &**************************************************
+    584 & STAZIONE DELLA LINEA HOST-ROUTER E TERMINAL-HOST
+    585 &**************************************************
+    586  
+    587 /STATION/
+    588  NAME = *LINE_HR.R;
+                       |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... LINE_HR
+    589  & Si calcola il tempo costante relativo alla trasmissione del pacchetto
+ che verrà, poi inoltrato su ROUT, puntatore al
+    590  SERVICE = BEGIN
+    591 			CST(T);
+               |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... T
+    592 		   END
+    593  
+    594  TRANSIT = ROUT;
+    595 &******************************************************
+    596 & DEFINIZIONE DELL'OGGETTO LINE_TH: Il collegamento TERMINAL-HOST
+    597 &******************************************************
+    598  
+    599   OBJECT LINE_TH(TH);
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... OBJECT
+    600 	& QH : Coda che invia i pacchetti dal terminale alla coda user dell'hos
+t di destinazione tramite il puntatore TOUT
+    601 	& HQ : Coda che invia i pacchetti dall'host alla coda access_h del term
+inale di destinazione tramite il puntatore TIN
+    602 	QUEUE QH,HQ;
+             |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... QUEUE
+    603  
+    604 	& TOUT : Puntatore a coda utilizzato dalla coda QH, richiama la coda us
+er dell’host.
+    605 	& TIN : Puntatore a coda utilizzato dalla coda QH, richiama la coda acc
+ess_h dell’host.
+    606 	REF QUEUE TOUT,TIN;
+           |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... REF
+    607  
+    608 	& Tempo impiegato per la trasmissione del pacchetto, simula il ritardo 
+di trasmissione
+    609 	REAL TH;
+            |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... REAL
+    610   END;
+            |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    611  
+    612  
+    613  
+    614 /STATION/
+    615  NAME = *LINE_TH.QH;
+                       |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... LINE_TH
+    616  SERVICE = CST(TH);
+                        |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... TH
+    617  TRANSIT = TOUT;
+                      |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... TOUT
+    618 	
+    619 /STATION/
+    620  NAME = *LINE_TH.HQ;
+                       |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... LINE_TH
+    621  SERVICE = BEGIN
+    622  IF CUSTOMER IS WEBAPP THEN
+                             |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    623  	CST(TH);
+    624  END;
+    625  TRANSIT = TIN;
+                     |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... TIN
+    626  
+    627 &******************************************************************
+    628 & DEFINIZIONE DELL' OGGETTO PACKET
+    629 &******************************************************************
+    630  
+    631 &BIRTH: Utilizzato per monitorare i tempi di round-trip.
+    632 &DIME: Lunghezza in byte del pacchetto.
+    633 CUSTOMER OBJECT PACKET;
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... CUSTOMER
+    634     REAL BIRTH;
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... REAL
+    635     INTEGER DIME;
+                  |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+    636 END;
+          |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    637 &********************************
+    638 & DEFINIZIONE DELL' OGGETTO ROUTER
+    639 &********************************
+    640  
+    641  OBJECT ROUTER(ID,N);
+              |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... OBJECT
+    642 	& N è il numero degli altri router direttamente connessi
+    643 	INTEGER N;
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+    644 	& Identificativo del router
+    645 	INTEGER ID;
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+    646 	&Coda principale del router, calcola i tempi di trasmissione e instrada
+ i pachetti sull'array S o su INSTR
+    647 	QUEUE CPU;
+             |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... QUEUE
+    648 	& Contiene i puntatori alle varie code access_r degli host che sono con
+nessi al router. Viene utilizzato quando un pacc
+    649 	REF QUEUE S(NH);
+           |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... REF
+    650 	& contiene i puntatori alle varie code canale delle vie che servono per
+ connettere i router.
+    651 	REF QUEUE INSTR(N);
+           |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... REF
+    652 	& probabilità che un pacchetto sia instradato verso una posizione dell
+ array instradamento
+    653 	REAL PROB(N);
+            |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... REAL
+    654 	& capacita di trasmissione
+    655 	REAL RATE;
+            |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... REAL
+    656 	& probabilità di errore
+    657 	REAL P_ERR;
+            |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... REAL
+    658  END;
+           |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    659  
+    660  
+    661  
+    662  
+    663 &****************
+    664 & CPU DI UN ROUTER
+    665 &****************
+    666 /DECLARE/
+    667 INTEGER PR;
+    668  
+    669 /STATION/
+    670  NAME = *ROUTER.CPU;
+                      |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... ROUTER
+    671  SCHED = FIFO,PRIOR;
+    672  SERVICE = BEGIN
+    673  	   IF (TYP = "info") THEN
+    674 			& calcolo del tempo esponenziale, in base al tipo di pacchetto, e con
+trollato se c'è perdita di pacchetti(in caso vi
+    675  	   		EXP((HOSTS#(SOUR_ID).LI * 8)/RATE)
+                                               |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... RATE
+    676            ELSE IF (TYP = "app" ) AND (CUSTOMER IS WEBAPP)   THEN
+    677 		   		EXP(((CUSTOMER::WEBAPP).N * 8)/RATE)
+    678 		   ELSE
+    679 		   		EXP((HOSTS#(SOUR_ID).LA * 8)/RATE);
+    680            IF DRAW(P_ERR) THEN
+                               |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... P_ERR
+    681 		   		TRANSIT(OUT)
+    682            ELSE
+    683 		   	& Confrontare id del router collegato all host di destinazione con
+ l'id del router nel quale si trova attualmente
+    684            	IF (HOSTS#(DEST_ID).ID_R = ID) THEN
+    685 					& if yes, viene mandato sull'array di puntatori S, il quale contien
+e i riferimenti alle code ACCESS_R degli host
+    686 				   IF (CCLASS=WEBAP) THEN
+    687 				   		TRANSIT(S(DEST_ID))
+    688 				   ELSE
+    689 				   		TRANSIT(S(DEST_ID),RECEPT);
+    690            END;
+    691 & viene transitato sull array di puntatori INSTR, il quale contiene i pu
+ntatori alle code CANALE delle vie che permetton
+    692  TRANSIT=INSTR(1 STEP 1 UNTIL N),PROB,OUT;
+                     |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... INSTR
+    693  
+    694 &******************************************************************
+    695 & DEFINIZIONE DELL' OGGETTO SOFTWARE
+    696 &******************************************************************
+    697 OBJECT SOFTWARE;
+             |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... OBJECT
+    698  
+    699 	& PROGRAM : gestisce la creazione delle webapp, assegna anche i valori 
+di porta di destinazione e di origine, leggendo
+    700 	& SERVIZIO : Coda principale del software, inizialmente riconosce se il
+ pacchetto si trova in un client o in un server(
+    701 	QUEUE PROGRAM,SERVIZIO;
+             |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... QUEUE
+    702  
+    703 	& EXIT: Identificativo del terminal agganciato al software, corrisponde
+ anche all’host agganciato al terminal.
+    704 	INTEGER EXIT;
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+    705  
+    706 	& Identifica il ruolo del software, ogni software usato nella simulazio
+ne di web application avrà un ruolo, il client
+    707  
+    708 	INTEGER ROLE;
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+    709  
+    710 	& IDS: Identificativo del software, può assumere 0 o 1, il primo caso 
+è per i server, il secondo per i client
+    711 	INTEGER IDS;
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+    712 	
+    713 	& Puntate al file "server.app" che descrive il comportamento delle weba
+pp, la quantità di cpu, disco e terminale usata
+    714 	REF FILE FA;
+           |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... REF
+    715  
+    716 	&Riferemento ad una webapp, generalmente usato per creare ed inviare we
+bapp standard
+    717 	REF WEBAPP WA;
+           |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... REF
+    718  
+    719 	& Buffer di appoggio per permettere di rielabolare gli ID di sorgente e
+ destinazione una volta arrivato il paccheto nel
+    720 	INTEGER BUF;& Buffer di appogio per permettere lo scambio di PROGRAM e 
+destinazione
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+    721 	
+    722 	& Numero di sequenza di controllo, generalmente impostato come numero d
+i sequenza dell'ultimo pacchetto arrivato al sof
+    723 	INTEGER C_SEQ_N;
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+    724 	
+    725 	& Tempo di inizio dell'applicazione
+    726 	REAL RUNTIME;
+            |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... REAL
+    727 END;
+          |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    728  
+    729  
+    730  
+    731  
+    732 &*****************
+    733 & STATIONS
+    734 &*****************
+    735 /STATION/
+    736    NAME=*SOFTWARE.SERVIZIO;
+                        |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... SOFTWARE
+    737    SERVICE (WEBAP) = BEGIN
+    738 			WITH (CUSTOMER::WEBAPP) DO BEGIN
+                                |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    739 			COUNT := COUNT +1;
+    740 			IF (IDS=0) THEN & SIAMO IN UN SERVER
+                 |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... IDS
+    741 				BEGIN
+    742 					&SONO IN UN SERVER WEB
+    743 					EXP(20);
+    744 					PRINT ("Sono nel server web", DEST_ID);
+    745 					APP:=GET(FA,INTEGER);
+                       |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... FA
+    746 					FOR I:=1 STEP 1 UNTIL NSOFTW DO
+    747 					BEGIN
+    748 					IF SW#(I).ROLE=APP THEN SOUR_ID:=SW#(I).EXIT;
+                      |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    749 					END;
+    750 					APP:=GET(FA,INTEGER);
+                       |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... FA
+    751 					FOR I:=1 STEP 1 UNTIL NSOFTW DO
+    752 					BEGIN
+    753 					IF SW#(I).ROLE=APP THEN DEST_ID:=SW#(I).EXIT;
+                      |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    754 					END;
+    755 	
+    756 					ACPU:=GET(FA,INTEGER);
+                |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... ACPU
+    757 					IF (ACPU=-1)THEN BEGIN && fine applicazione
+                    |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... ACPU
+    758 						FOR I:=1 STEP 1 UNTIL NSOFTW DO
+    759 						BEGIN
+    760 							WA:=(HOSTS#(SW#(I).EXIT).WEBTIMER.FIRST)::WEBAPP;
+                |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    761 							WHILE (WA<>NIL) DO
+                       |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    762 							BEGIN
+    763 								IF (WA.NEXT=NIL) THEN
+                     |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    764 								BEGIN
+    765 									TRANSIT (WA,OUT);
+    766 									WA:=NIL;
+                  |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    767 								END
+    768 								ELSE
+                   |
+ (050103)  ==>WARNING (COMPILE) : ";" HAS BEEN ADDED BEFORE THIS ELEMENT
+                   |
+ (050101)  ==>ERROR (COMPILE) : INCORRECT SYNTAX
+    769 								BEGIN
+    770 									WA:=(WA.NEXT)::WEBAPP;
+    771 									TRANSIT (WA.PREVIOUS,OUT);
+                           |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    772 								END;
+    773 							END;
+    774 						END;
+    775 						PRINT ("FINE APPLICAZIONE");
+    776 						PRINT ("FINE APPLICAZIONE",TIME);
+    777 						CLOSE(FA);
+                     |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... FA
+    778 						ISOPEN:=1;
+    779 						TRANSIT(OUT);
+    780 					END;
+    781 	
+    782 					OP:=1;
+              |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... OP
+    783 					IF (L=1) THEN OP:=12;
+              |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    784 					TYPE:="risweb";
+ (060607)  ==>WARNING (STATION) : "=" SHOULD BE USED INSTEAD OF ":="
+                          |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    785 					GETNPVAL(DEST_ID);
+                    |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... GETNPVAL
+    786 					DEST_NP:=NPVAL;
+                   |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... DEST_NP
+    787 					GETNPVAL(SOUR_ID);
+                    |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... GETNPVAL
+    788 					SOUR_NP:=NPVAL;
+                   |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... SOUR_NP
+    789 					PRINT ("DESTID: ", DEST_ID, "SOURID: ", SOUR_ID,"DESTNP: ", DEST_NP
+, "SOURNP: ", SOUR_NP);
+                 |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... PRINT
+    790 			        AD:=GET(FA,INTEGER);
+                    |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... AD
+    791 			        AT:=GET(FA,INTEGER);
+                    |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... AT
+    792 			        N:=GET(FA,INTEGER);
+                   |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... N
+    793 			        IF (N=0) THEN PRINT ("ERROR: I dati non sono consistenti");
+                    |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    794 			        BCPU:=GET(FA,INTEGER);
+                      |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... BCPU
+    795 			        BD:=GET(FA,INTEGER);
+                    |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... BD
+    796 					WTOUT:=N*2+ACPU*2+AD*2+AT*2+BCPU*2+BD*2;
+                 |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... WTOUT
+    797 					NewLn(FA);
+                 |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... NewLn
+    798 					SW#(SOUR_NP).C_SEQ_N:=SEQ_N;
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... SW#
+    799 					TRANSIT(TERM#(EXIT).SCH);
+                              |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... EXIT
+    800 				END
+              |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    801 				ELSE
+    802 				BEGIN
+    803 					PRINT("SONO NEL CLIENT ", IDS);
+    804 					APP:=GET(FA,INTEGER);
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... APP
+    805 					FOR I:=1 STEP 1 UNTIL NSOFTW DO
+               |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    806 					BEGIN
+    807 					IF SW#(I).ROLE=APP THEN
+    808 					SOUR_ID:=SW#(I).EXIT;
+    809 					END;
+               |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    810 					APP:=GET(FA,INTEGER);
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... APP
+    811 					FOR I:=1 STEP 1 UNTIL NSOFTW DO
+               |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    812 					BEGIN
+    813 					IF SW#(I).ROLE=APP THEN
+    814 					DEST_ID:=SW#(I).EXIT;
+    815 					END;
+               |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    816 	
+    817 					ACPU:=GET(FA,INTEGER);
+                |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... ACPU
+    818 					IF (ACPU=-1)THEN BEGIN && fine applicazione
+              |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    819 						FOR I:=1 STEP 1 UNTIL NSOFTW DO
+    820 						BEGIN
+    821 							WA:=(HOSTS#(SW#(I).EXIT).WEBTIMER.FIRST)::WEBAPP;
+    822 							WHILE (WA<>NIL) DO
+                   |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    823 							BEGIN
+    824 								IF (WA.NEXT=NIL) THEN
+    825 								BEGIN
+    826 									TRANSIT (WA,OUT);
+    827 									WA:=NIL;
+                  |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... WA
+    828 								END
+                  |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    829 								ELSE
+    830 								BEGIN
+    831 									WA:=(WA.NEXT)::WEBAPP;
+    832 									TRANSIT (WA.PREVIOUS,OUT);
+                           |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    833 								END;
+                  |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    834 							END;
+                 |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    835 						END;
+                |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    836 						PRINT ("FINE APPLICAZIONE");
+                  |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... PRINT
+    837 						PRINT ("FINE APPLICAZIONE",TIME);
+                  |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... PRINT
+    838 						CLOSE(FA);
+                  |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... CLOSE
+    839 						ISOPEN:=1;
+                   |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... ISOPEN
+    840 						TRANSIT(OUT);
+                         |
+ (050202)  ==>ERROR (COMPILE) : INCORRECT MIXED TYPES
+    841 					END;
+               |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    842 					OP:=1;
+              |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... OP
+    843 					IF (L=1) THEN
+              |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    844 						OP:=12;
+    845 					TYPE:="web";
+ (060607)  ==>WARNING (STATION) : "=" SHOULD BE USED INSTEAD OF ":="
+                       |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    846 					TYP:="app";
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... TYP
+    847 	
+    848 	
+    849 	
+    850 					GETNPVAL(DEST_ID);
+                    |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... GETNPVAL
+    851 					DEST_NP:=NPVAL;
+                   |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... DEST_NP
+    852 					GETNPVAL(SOUR_ID);
+                    |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... GETNPVAL
+    853 					SOUR_NP:=NPVAL;
+                   |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... SOUR_NP
+    854 	
+    855 					AD:=GET(FA,INTEGER);
+              |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... AD
+    856 					AT:=GET(FA,INTEGER);
+              |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... AT
+    857 					N:=GET(FA,INTEGER);
+             |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... N
+    858 					IF (N=0) THEN
+              |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    859 						PRINT ("ERROR: I dati non sono consistenti");
+    860 					BCPU:=GET(FA,INTEGER);
+                |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... BCPU
+    861 					BD:=GET(FA,INTEGER);
+              |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... BD
+    862 					WTOUT:=N*2+ACPU*2+AD*2+AT*2+BCPU*2+BD*2;
+                 |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... WTOUT
+    863 					NewLn(FA);
+                 |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... NewLn
+    864 					SEQ_N:=SEQ_N+1;
+                 |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... SEQ_N
+    865 					TRANSIT(TERM#(EXIT).SCH);
+                              |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... EXIT
+    866 				END;
+              |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    867 		END;
+            |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    868 END;
+          |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    869  
+    870  
+    871  
+    872 	
+    873 /STATION/
+    874  NAME = *SOFTWARE.PROGRAM;
+                        |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... SOFTWARE
+    875     INIT(BOOT)=1;
+    876     SERVICE (BOOT)= BEGIN
+    877     		    IF (IDS=0) THEN
+                        |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... IDS
+    878 					BEGIN
+    879          				TRANSIT (OUT);
+    880          			END
+    881          	    ELSE
+    882          			BEGIN
+    883 					OPEN(FA,1);
+                   |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... FA
+    884 					WA:=NEW (WEBAPP);
+              |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    885 					PRINT("INIZIO APPLICAZIONE:",TIME);
+    886 					WA.OP:=0;
+              |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    887 					WA.L:=0;
+              |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    888 					WA.SEQ_N:=1;
+              |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    889 					WA.TYPE:="web";
+              |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    890 					WA.TYP:="app";
+              |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    891 					& Viene letto il file Server.app
+    892 					APP:=GET(FA,INTEGER);
+                       |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... FA
+    893 					FOR I:=1 STEP 1 UNTIL NSOFTW DO
+    894 						BEGIN
+    895 							IF SW#(I).ROLE=APP THEN
+                        |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    896 								WA.SOUR_ID:=SW#(I).EXIT;
+    897 						END;
+    898 	
+    899 				APP:=GET(FA,INTEGER);
+                      |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... FA
+    900 				FOR I:=1 STEP 1 UNTIL NSOFTW DO
+    901 				BEGIN
+    902 					IF SW#(I).ROLE=APP THEN
+                      |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+    903 						WA.DEST_ID:=SW#(I).EXIT;
+    904 				END;
+    905 	
+    906 				GETNPVAL(WA.SOUR_ID);
+                      |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    907     		    WA.SOUR_NP:=NPVAL;
+                   |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    908 				GETNPVAL(WA.DEST_ID);
+                      |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    909     		    WA.DEST_NP:=NPVAL;
+                   |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    910  
+    911 				TRANSIT (WA,PROGRAM,WEBAP);
+                      |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    912 			END;
+    913     		END;
+    914     SERVICE (WEBAP)= BEGIN
+    915     			WITH (CUSTOMER::WEBAPP) DO BEGIN
+                                    |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+    916 					PRINT ("PARTO DAL CLIENT ",SOUR_ID, "PER ANDARE A", DEST_ID);
+    917 					ACPU:=GET(FA,INTEGER);
+                |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... ACPU
+    918 					IF (ACPU=-1)THEN
+                    |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... ACPU
+    919 						BEGIN && fine applicazione
+    920 						FOR I:=1 STEP 1 UNTIL NSOFTW DO
+    921 						BEGIN
+    922 							WA:=(HOSTS#(SW#(I).EXIT).WEBTIMER.FIRST)::WEBAPP;
+                |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    923 							WHILE (WA<>NIL) DO
+                       |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    924 							BEGIN
+    925 								IF (WA.NEXT=NIL) THEN
+                     |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    926 								BEGIN
+    927 									TRANSIT (WA,OUT);
+    928 									WA:=NIL;
+                  |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    929 								END
+    930 								ELSE
+                   |
+ (050103)  ==>WARNING (COMPILE) : ";" HAS BEEN ADDED BEFORE THIS ELEMENT
+                   |
+ (050101)  ==>ERROR (COMPILE) : INCORRECT SYNTAX
+    931 								BEGIN
+    932 									WA:=(WA.NEXT)::WEBAPP;
+    933 									TRANSIT (WA.PREVIOUS,OUT);
+                           |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WA
+    934 								END;
+    935 							END;
+    936 						END;
+    937 						PRINT ("FINE APPLICAZIONE");
+                  |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... PRINT
+    938 						PRINT ("FINE APPLICAZIONE",TIME);
+                  |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... PRINT
+    939 						CLOSE(FA);
+                  |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... CLOSE
+    940 						TRANSIT(OUT);
+                         |
+ (050202)  ==>ERROR (COMPILE) : INCORRECT MIXED TYPES
+    941 					END;
+               |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    942 	
+    943 					AD:=GET(FA,INTEGER);
+              |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... AD
+    944                		AT:=GET(FA,INTEGER);
+                          |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... AT
+    945                		N:=GET(FA,INTEGER);
+                         |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... N
+    946                		IF (N=0) THEN PRINT ("ERROR: I dati non sono consistent
+i");
+                          |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    947                		BCPU:=GET(FA,INTEGER);
+                            |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... BCPU
+    948                		BD:=GET(FA,INTEGER);
+                          |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... BD
+    949 					WTOUT:=N*2+ACPU*2+AD*2+AT*2+BCPU*2+BD*2;
+                 |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... WTOUT
+    950                		NewLn(FA);
+                             |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... NewLn
+    951                		OP:=1;
+                          |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... OP
+    952                		TRANSIT (TERM#(EXIT).SCH);
+                                           |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... EXIT
+    953                		END;
+                           |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    954                	END;
+                          |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    955  TRANSIT=OUT;
+    956  
+    957 &******************************************************************
+    958 & DEFINIZIONE DELL' OGGETTO TERMINAL
+    959 &******************************************************************
+    960 OBJECT TERMINAL (IDT);
+             |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... OBJECT
+    961  
+    962 	& UTENTE : Sorgente che produce i pacchetti per il traffico standard e 
+li invia nella coda CPU del terminal, nel caso i
+    963 	& ACCESS_H : Coda che riceve i pacchetti dall’host e li manda nella c
+oda SCH del terminal, inoltre fa cambiare il lat
+    964 	& CPU : Coda che simula il ritardo dovuto alle operazioni che la CPU de
+ve svolgere, infine rimanda i pacchetti nella co
+    965 	& DISK : Coda che simula il ritardo dovuto agli accessi a disco necessa
+ri all’applicazione e poi manda i pacchetti ne
+    966      QUEUE UTENTE, ACCESS_H, CPU, DISK;
+                 |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... QUEUE
+    967  
+    968 	 & SCH : Attiva solo nei terminal che simulano applicazioni, questa cod
+a gestisce tutte le operazioni attraverso la var
+    969 	
+    970 	& TERM: Coda che simula il ritardo dell’applicazione dovuto all’int
+erazione con l’utente e poi manda i pacchetti
+    971      QUEUE SCH,TERM; && Code attive solo per i webterm
+                 |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... QUEUE
+    972  
+    973 	 & Indica se la sorgente UTENTE è attiva oppure no, ovvero se si devon
+o gestire pacchetti di traffico standard oppure
+    974 	 BOOLEAN ACTIVES;
+                |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... BOOLEAN
+                      TOO MANY WARNINGS OR ERRORS
+                      AT CURRENT LEVEL
+                      SEVERITY LEVEL INCREASED
+                      MAXIMUM SEVERITY LEVEL REACHED
+                      EXECUTION IS ABORTED
+    975  
+    976 	 & Identificativo del terminal.
+    977 	 INTEGER IDT;
+                |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+    978  
+    979 	 & Identificativo dell’host a cui il terminal è collegato.
+    980 	 INTEGER ID_H;
+                |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+    981  
+    982 	 & cui il terminal è collegato.
+    983      STRING NAME;
+                  |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... STRING
+    984  
+    985 	 & Lunghezza di una richiesta per la CPU o per il disco in un terminal 
+che simula traffico standard.
+    986 	 INTEGER REQLENGHT;
+                |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+    987  
+    988 	 & Process Tempo necessario alla CPU per eseguire un’operazione.
+    989 	 & PROC_D Tempo necessario al disco per eseguire un accesso.
+    990 	 REAL PROCESS, PROC_D;
+             |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... REAL
+    991  
+    992 	 & Pacchetto generato dalla coda UTENTE.
+    993      REF REQUEST RQ;
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... REF
+    994 	 & Riferimento alla coda qh dell’oggetto LINE_TH.
+    995      REF QUEUE PORTA;
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... REF
+    996 END;
+          |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+    997  
+    998  
+    999 /STATION/
+   1000     NAME = *TERMINAL.SCH;
+                           |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... TERMINAL
+   1001     SERVICE(WEBAP) = BEGIN
+   1002 		   	WITH (CUSTOMER::WEBAPP) DO BEGIN
+                                   |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+   1003 		IF (L=1) THEN
+   1004                BEGIN
+   1005 			    IF (OP=0) THEN TRANSIT (SW#(DEST_NP).SERVIZIO);
+   1006 				IF (OP=12) THEN BEGIN
+                 |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... OP
+   1007                		OP:=1;
+                          |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... OP
+   1008                		TRANSIT (CPU);
+                                    |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... CPU
+   1009 				END;
+   1010 				IF (OP=1) THEN BEGIN
+                 |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... OP
+   1011                		OP:=2;
+                          |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... OP
+   1012                		TRANSIT (DISK);
+                                     |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... DISK
+   1013                		END;
+   1014 				IF (OP=2) THEN BEGIN
+                 |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... OP
+   1015                		OP:=3;
+                          |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... OP
+   1016                		TRANSIT (TERM);
+                                     |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... TERM
+   1017                		END;
+   1018                	IF (OP=3) THEN BEGIN
+                             |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... OP
+   1019                		OP:=1;
+                          |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... OP
+   1020                		TRANSIT (PORTA);
+                                      |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... PORTA
+   1021                		END;
+   1022                	IF (OP=4) THEN BEGIN
+                             |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... OP
+   1023                		 OP:=5;
+                           |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... OP
+   1024                		 TRANSIT (CPU);
+                                     |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... CPU
+   1025                		 END;
+   1026                	IF (OP=5) THEN BEGIN
+                             |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... OP
+   1027                		OP:=6;
+                          |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... OP
+   1028                		TRANSIT (DISK);
+                                     |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... DISK
+   1029                		END;
+   1030 				IF (OP=6) THEN BEGIN
+                 |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... OP
+   1031                		OP:=0;
+                          |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... OP
+   1032                		TRANSIT (TERM);
+                                     |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... TERM
+   1033                	END;
+   1034  
+   1035                END
+   1036          ELSE
+   1037                 BEGIN
+   1038 				IF (OP=0) THEN TRANSIT (SW#(DEST_NP).SERVIZIO);
+   1039 				IF (OP=1) THEN BEGIN
+             |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1040                		OP:=2;
+   1041                		TRANSIT (CPU);
+                                    |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... CPU
+   1042 				END;
+              |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1043 				IF (OP=2) THEN BEGIN
+             |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1044                		OP:=3;
+   1045                		TRANSIT (DISK);
+                                     |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... DISK
+   1046                		END;
+                           |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1047 				IF (OP=3) THEN BEGIN
+             |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1048 				    OP:=4;
+   1049                		TRANSIT (TERM);
+                                     |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... TERM
+   1050                		END;
+                           |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1051                	IF (OP=4) THEN
+                         |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1052 					IF (TYPE="risweb") THEN BEGIN
+   1053 						TRANSIT (SW#(DEST_NP).SERVIZIO);
+   1054 						END
+                |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1055 					ELSE BEGIN
+   1056 							TRANSIT (PORTA);
+   1057 						 END;
+                 |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1058 	
+   1059                 IF (OP=5) THEN BEGIN
+                         |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1060                		OP:=6;
+   1061                		TRANSIT (CPU);
+                                    |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... CPU
+   1062 			END;
+             |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1063 		IF (OP=6) THEN BEGIN
+           |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1064                		OP:=7;
+   1065                		TRANSIT (DISK);
+                                     |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... DISK
+   1066                		END;
+                           |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1067                	IF (OP=7) THEN BEGIN
+                         |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1068                		OP:=0;
+   1069                		TRANSIT (TERM);
+                                     |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... TERM
+   1070                		END;
+                           |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1071  
+   1072                END;
+                         |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1073 	END;
+           |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1074 	END;
+           |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1075 	
+   1076 	
+   1077  
+   1078 	
+   1079  
+   1080 /STATION/
+   1081  NAME = *TERMINAL.CPU;
+                        |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... TERMINAL
+   1082  SERVICE (WEBAP) = BEGIN
+   1083 	WITH (CUSTOMER::WEBAPP) DO BEGIN
+                              |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+   1084  		IF (L=1) THEN
+   1085 		 	CST(BCPU*PROCESS)
+   1086  		ELSE
+   1087  			CST(ACPU*PROCESS);
+   1088  		TRANSIT (SCH);
+                      |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... SCH
+   1089  		END;
+   1090  	END;
+            |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1091  
+   1092  SERVICE = EXP(PROCESS);
+                             |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... PROCESS
+   1093  TRANSIT = DISK;
+                      |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... DISK
+   1094  
+   1095  
+   1096  
+   1097  /STATION/
+   1098  NAME = *TERMINAL.DISK;
+                        |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... TERMINAL
+   1099  SERVICE(WEBAP) = BEGIN
+   1100 		WITH (CUSTOMER::WEBAPP) DO BEGIN
+                               |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+   1101  	    	IF (L=1) THEN
+   1102 				CST(BD*PROC_D)
+   1103  	    	ELSE
+   1104             	CST(AD*PROC_D);
+   1105             	TRANSIT (SCH);
+                                |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... SCH
+   1106             	END;
+   1107 	   END;
+              |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1108  
+   1109 SERVICE(EMISSION) = BEGIN
+   1110 	        EXP(PROC_D);
+                          |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... PROC_D
+   1111             TRANSIT(PORTA,EMISSION);
+                                |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... PORTA
+   1112             END;
+   1113  SERVICE(RICHIN) = BEGIN
+   1114 	        EXP(PROC_D);
+                          |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... PROC_D
+   1115             TRANSIT(PORTA,RICHIN);
+                                |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... PORTA
+   1116             END;
+   1117  SERVICE(RISPOSTA) = BEGIN
+   1118 	        EXP(PROC_D);
+                          |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... PROC_D
+   1119             TRANSIT(OUT);
+   1120             END;
+   1121  TRANSIT = OUT;
+   1122  
+   1123  
+   1124  /STATION/
+   1125  NAME = *TERMINAL.TERM;
+                        |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... TERMINAL
+   1126  SERVICE (WEBAP) =  BEGIN
+   1127 			WITH (CUSTOMER::WEBAPP) DO EXP(AT);
+                                |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+   1128 		    END;
+   1129  
+   1130  TRANSIT = SCH;
+                     |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... SCH
+   1131  
+   1132  
+   1133  /STATION/
+   1134  NAME = *TERMINAL.ACCESS_H;
+                        |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... TERMINAL
+   1135  SERVICE (WEBAP) =  WITH (CUSTOMER::WEBAPP) DO BEGIN
+                                                 |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... WEBAPP
+   1136 		&PRINT("PASSO IN ACCESS_H");
+   1137 		IF L=0 THEN
+   1138 			L:=1
+   1139 		ELSE
+   1140 			L:=0;
+   1141  		TRANSIT (SCH);
+                      |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... SCH
+   1142  		END;
+             |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1143  SERVICE =  BEGIN
+   1144  			EXP((LUNGH*8)/CAP_BUF);
+   1145  			TRANSIT(CPU);
+                      |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... CPU
+   1146  END;
+   1147  
+   1148  
+   1149 /STATION/
+   1150     NAME = *TERMINAL.UTENTE;
+                           |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... TERMINAL
+   1151     &INIT=0;
+   1152     TYPE = SOURCE;
+   1153     SERVICE = BEGIN
+   1154     		IF (ACTIVES)THEN BEGIN
+                        |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... ACTIVES
+   1155                 EXP(TEMPO*100);
+   1156 		RQ := NEW(REQUEST);
+           |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... RQ
+   1157 	        RQ.ORIG:=IDT;
+                  |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... RQ
+   1158                 RQ.SIZE:= REQLENGHT;
+                         |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... RQ
+   1159                 DEST := RINT(1,NHTEST);
+   1160                 WHILE (TERM#(DEST).ACTIVES=FALSE) DO && Che al limite ne
+anche serve
+                                          |
+ (05020S)  ==>ERROR (COMPILE) : INCORRECT PREFIX EXPRESSION
+   1161                 	DEST := RINT(1,NHTEST);
+   1162                 RQ.DESTI := DEST;
+                         |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... RQ
+   1163                 LUNGH := RQ.SIZE;
+                                  |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... RQ
+   1164  	        TRANSIT(RQ,CPU,EMISSION);
+                           |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... RQ
+   1165  	        END
+   1166  	        ELSE
+   1167  	        CST(T_MAX); && Bloccaggio della PROGRAM
+   1168 	      END;
+   1169     TRANSIT = OUT;
+   1170  
+   1171  
+   1172 &******************************************************************
+   1173 & DEFINIZIONE DELL'OGGETTO VIA: CONNESSIONE HALF-DUPLEX ROUTER->ROUTER
+   1174 &******************************************************************
+   1175  
+   1176  OBJECT VIA(ID,TEM);
+              |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... OBJECT
+   1177 	& coda che simula il ritardo di tramissione causato dal collegamento tr
+a i router. Inoltra i pacchetti alla coda cpu de
+   1178 	QUEUE CANALE;
+             |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... QUEUE
+   1179 	& Puntatore alla Queue cpu, viene richiamato dalla coda CANALE
+   1180 	REF QUEUE NEXT_R;
+           |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... REF
+   1181 	& Tempo richiesto per la trasmissione
+   1182 	REAL TEM;
+            |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... REAL
+   1183 	& ID della via
+   1184 	INTEGER ID;
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+   1185  END;
+           |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1186  
+   1187  
+   1188  &*********************************
+   1189 & STAZIONE DELLA LINEA ROUTER-ROUTER
+   1190 &*********************************
+   1191  
+   1192 /STATION/
+   1193 	NAME=*VIA.CANALE;
+                 |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... VIA
+   1194 	SERVICE= CST(TEM);
+                        |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... TEM
+   1195 	TRANSIT=NEXT_R;
+                      |
+ (050206)  ==>ERROR (COMPILE) : THIS IDENTIFIER HAS NOT BEEN DECLARED ...
+                                OR IS NOT KNOWN IN THIS CONTEXT ... NEXT_R
+   1196 &******************************************************************
+   1197 & DEFINIZIONE DELL' OGGETTO WEB APPLICATION
+   1198 &******************************************************************
+   1199 CUSTOMER OBJECT WEBAPP;
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... CUSTOMER
+   1200 	& AT: Stima del tempo che l’applicazione dovrà spendere nella fase p
+er le operazioni I/O con l’utente;
+   1201 	& ACPU: Numero di operazioni richieste dalla CPU dell’host A.
+   1202 	& AD: Numero di accessi a disco richiesti dell’host A.
+   1203 	& N: Numero di byte trasmessi nella fase sulla rete;
+   1204 	& BCPU: Numero di operazioni richieste dalla CPU dell’host B.
+   1205 	& BD: Numero di accessi a disco richiesti dell’host B.
+   1206 	
+   1207 	INTEGER AT,ACPU,AD,N,BCPU,BD;
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+   1208 	& Operazioni richieste per fase a terminali (AT in ms),
+   1209 	& processore (ACPU), disco (AD), dell web terminal A,
+   1210 	& byte spediti sulla rete (N), operazioni richieste per fase
+   1211 	& a processore (BCPU) e disco(BD) dell web terminal B;
+   1212 	
+   1213 	
+   1214 	& OP : Indica la prossima operazione da eseguire all’interno di una f
+ase (es: accesso a disco, trasmissione sulla ret
+   1215  	& L: Indica il lato dell’applicazione, ovvero se si tratta del lato 
+client(0) o del lato server(1.)
+   1216 	
+   1217 	INTEGER OP,L; & Tipo di operazione richiesta(CPU o Disk o ...) e lato d
+ell'operazione(A o B)
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+   1218 	
+   1219 	
+   1220  
+   1221 	& tempo di time-out, ovvero il tempo dopo la quale una trasmissione è 
+considerata fallita, e viene ripetuta.
+   1222 	INTEGER WTOUT; && Tempo di ritrasmissione per le web application
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+   1223 	
+   1224 	& Indica la posizione del pacchetto sulla rete.
+   1225 	INTEGER SEQ_N;
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+   1226 	
+   1227 	& APPDESTID : Identificativo della destinazione della webapp.
+   1228 	& APPDESTNP : Numero di porta della destinazione della webapp.
+   1229 	INTEGER APPDESTID,APPDESTNP;
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+   1230 	
+   1231 	& SSO_ID: Identificativo del server SSO se presente.
+   1232 	& CLIENT: Intero che serve per identificare il client.
+   1233 	& SERVER: Intero che serve per identificare il server
+   1234 	INTEGER SSO_ID,CLIENT,SERVER,SSO;
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+   1235 	
+   1236 	& SOUR_NP: Indica il software che ha prodotto il pacchetto, ovvero la p
+orta nel protocollo TCP.
+   1237 	& DEST_NP: Indica il software a cui il pacchetto è indirizzato, ovvero
+ la porta nel protocollo TCP.
+   1238 	INTEGER SOUR_NP,DEST_NP; & Software A e B dell'applicazione;
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+   1239 	
+   1240 	INTEGER ID;
+               |
+ (060603)  ==>ERROR (STATION) : UNKNOWN PARAMETER OR OPTION ... INTEGER
+   1241 END;
+          |
+ (060601)  ==>ERROR (STATION) : INCORRECT SYNTAX
+   1242 &
+   1243 &********************************
+   1244 & CREAZIONE DELLA LIBRERIA DI OGGETTI
+   1245 &********************************
+   1246  
+   1247  /DECLARE/ FILE F;
+   1248  /EXEC/ BEGIN
+ (060901)  ==> WARNING (DECLARE) : FOLLOWING DECLARATIONS MAKE REFERENCE
+                              TO UNDECLARED OBJECT TYPES.
+                              REF ANY WILL BE ASSUMED FOR THOSE
+                              DECLARATIONS IN THE PROCEDURE
+                     "REF LINE_HR   LINE_HR#" DECLARED AT LINE     48                               
+                     "REF ROUTER    ROUTER# " DECLARED AT LINE     49                               
+                     "REF VIA       VIA#    " DECLARED AT LINE     50                               
+                     "REF TERMINAL  TERM#   " DECLARED AT LINE     51                               
+                     "REF SOFTWARE  SW#     " DECLARED AT LINE     52                               
+                     "REF LINE_TH   LINE_TH#" DECLARED AT LINE     53                               
+                     "REF PACKET    PAK     " DECLARED AT LINE    122                               
+                     "REF PACKET    RISP    " DECLARED AT LINE    122                               
+                     "REF WEBAPP    WA      " DECLARED AT LINE    125                               
+   1249 	FILASSIGN(F,"LIB.lis");
+   1250 	OPEN(F,2);
+   1251 	SAVE(F,"OGGETTI");
+   1252 	END;
+ (0J0H0A)  ==>ERROR (SUPER) : CANNOT LAUNCH EXECUTION
+                              SOME FATAL ERRORS OCCURED
+ (0J0H01)                     ... SKIP TO NEXT COMMAND
+   1253  /END/

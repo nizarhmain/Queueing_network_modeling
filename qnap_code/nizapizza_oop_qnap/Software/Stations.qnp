@@ -1,0 +1,226 @@
+
+&*****************
+& STATIONS
+&*****************
+/STATION/
+   NAME=*SOFTWARE.SERVIZIO;
+   SERVICE (WEBAP) = BEGIN
+			WITH (CUSTOMER::WEBAPP) DO BEGIN
+			COUNT := COUNT +1;
+			IF (IDS=0) THEN & SIAMO IN UN SERVER
+				BEGIN		
+					&SONO IN UN SERVER WEB
+					EXP(20);
+					PRINT ("Sono nel server web", DEST_ID);
+					APP:=GET(FA,INTEGER);
+					FOR I:=1 STEP 1 UNTIL NSOFTW DO
+					BEGIN
+					IF SW#(I).ROLE=APP THEN SOUR_ID:=SW#(I).EXIT;
+					END;
+					APP:=GET(FA,INTEGER);
+					FOR I:=1 STEP 1 UNTIL NSOFTW DO
+					BEGIN
+					IF SW#(I).ROLE=APP THEN DEST_ID:=SW#(I).EXIT;
+					END;
+					
+					ACPU:=GET(FA,INTEGER);
+					IF (ACPU=-1)THEN BEGIN && fine applicazione
+						FOR I:=1 STEP 1 UNTIL NSOFTW DO 
+						BEGIN
+							WA:=(HOSTS#(SW#(I).EXIT).WEBTIMER.FIRST)::WEBAPP;
+							WHILE (WA<>NIL) DO 
+							BEGIN
+								IF (WA.NEXT=NIL) THEN 
+								BEGIN 
+									TRANSIT (WA,OUT);
+									WA:=NIL;
+								END
+								ELSE 
+								BEGIN 
+									WA:=(WA.NEXT)::WEBAPP;
+									TRANSIT (WA.PREVIOUS,OUT);
+								END;
+							END;
+						END;
+						PRINT ("FINE APPLICAZIONE");
+						PRINT ("FINE APPLICAZIONE",TIME);
+						CLOSE(FA);
+						ISOPEN:=1;
+						TRANSIT(OUT); 
+					END;
+					
+					OP:=1;
+					IF (L=1) THEN OP:=12;
+					TYPE:="risweb";
+					GETNPVAL(DEST_ID);
+					DEST_NP:=NPVAL;
+					GETNPVAL(SOUR_ID);
+					SOUR_NP:=NPVAL;
+					PRINT ("DESTID: ", DEST_ID, "SOURID: ", SOUR_ID,"DESTNP: ", DEST_NP, "SOURNP: ", SOUR_NP);
+			        AD:=GET(FA,INTEGER);
+			        AT:=GET(FA,INTEGER);	
+			        N:=GET(FA,INTEGER);
+			        IF (N=0) THEN PRINT ("ERROR: I dati non sono consistenti");
+			        BCPU:=GET(FA,INTEGER);
+			        BD:=GET(FA,INTEGER);
+					WTOUT:=N*2+ACPU*2+AD*2+AT*2+BCPU*2+BD*2;
+					NewLn(FA);
+					SW#(SOUR_NP).C_SEQ_N:=SEQ_N;
+					TRANSIT(TERM#(EXIT).SCH);
+				END
+				ELSE
+				BEGIN
+					PRINT("SONO NEL CLIENT ", IDS);
+					APP:=GET(FA,INTEGER);
+					FOR I:=1 STEP 1 UNTIL NSOFTW DO
+					BEGIN
+					IF SW#(I).ROLE=APP THEN
+					SOUR_ID:=SW#(I).EXIT;
+					END;
+					APP:=GET(FA,INTEGER);
+					FOR I:=1 STEP 1 UNTIL NSOFTW DO
+					BEGIN
+					IF SW#(I).ROLE=APP THEN
+					DEST_ID:=SW#(I).EXIT;
+					END;
+					
+					ACPU:=GET(FA,INTEGER);
+					IF (ACPU=-1)THEN BEGIN && fine applicazione
+						FOR I:=1 STEP 1 UNTIL NSOFTW DO 
+						BEGIN
+							WA:=(HOSTS#(SW#(I).EXIT).WEBTIMER.FIRST)::WEBAPP;
+							WHILE (WA<>NIL) DO 
+							BEGIN
+								IF (WA.NEXT=NIL) THEN 
+								BEGIN 
+									TRANSIT (WA,OUT);
+									WA:=NIL;
+								END
+								ELSE 
+								BEGIN 
+									WA:=(WA.NEXT)::WEBAPP;
+									TRANSIT (WA.PREVIOUS,OUT);
+								END;
+							END;
+						END;
+						PRINT ("FINE APPLICAZIONE");
+						PRINT ("FINE APPLICAZIONE",TIME);
+						CLOSE(FA);
+						ISOPEN:=1;
+						TRANSIT(OUT); 
+					END;				
+					OP:=1;
+					IF (L=1) THEN 
+						OP:=12;
+					TYPE:="web";
+					TYP:="app";
+					
+					
+					
+					GETNPVAL(DEST_ID);
+					DEST_NP:=NPVAL;
+					GETNPVAL(SOUR_ID);
+					SOUR_NP:=NPVAL;
+						
+					AD:=GET(FA,INTEGER);
+					AT:=GET(FA,INTEGER);	
+					N:=GET(FA,INTEGER);
+					IF (N=0) THEN 
+						PRINT ("ERROR: I dati non sono consistenti");
+					BCPU:=GET(FA,INTEGER);
+					BD:=GET(FA,INTEGER);
+					WTOUT:=N*2+ACPU*2+AD*2+AT*2+BCPU*2+BD*2;
+					NewLn(FA);
+					SEQ_N:=SEQ_N+1;
+					TRANSIT(TERM#(EXIT).SCH);
+				END;
+		END;
+END;
+
+
+
+	
+/STATION/
+ NAME = *SOFTWARE.PROGRAM;
+    INIT(BOOT)=1;
+    SERVICE (BOOT)= BEGIN
+    		    IF (IDS=0) THEN 
+					BEGIN
+         				TRANSIT (OUT);
+         			END
+         	    ELSE
+         			BEGIN
+					OPEN(FA,1);
+					WA:=NEW (WEBAPP);
+					PRINT("INIZIO APPLICAZIONE:",TIME);
+					WA.OP:=0;
+					WA.L:=0;
+					WA.SEQ_N:=1;
+					WA.TYPE:="web";
+					WA.TYP:="app";
+					& Viene letto il file Server.app
+					APP:=GET(FA,INTEGER);
+					FOR I:=1 STEP 1 UNTIL NSOFTW DO
+						BEGIN
+							IF SW#(I).ROLE=APP THEN 
+								WA.SOUR_ID:=SW#(I).EXIT;
+						END;
+				
+				APP:=GET(FA,INTEGER);
+				FOR I:=1 STEP 1 UNTIL NSOFTW DO
+				BEGIN
+					IF SW#(I).ROLE=APP THEN 
+						WA.DEST_ID:=SW#(I).EXIT;
+				END;
+				
+				GETNPVAL(WA.SOUR_ID);
+    		    WA.SOUR_NP:=NPVAL;
+				GETNPVAL(WA.DEST_ID);
+    		    WA.DEST_NP:=NPVAL;
+    		    
+				TRANSIT (WA,PROGRAM,WEBAP);
+			END;
+    		END;
+    SERVICE (WEBAP)= BEGIN
+    			WITH (CUSTOMER::WEBAPP) DO BEGIN
+					PRINT ("PARTO DAL CLIENT ",SOUR_ID, "PER ANDARE A", DEST_ID);
+					ACPU:=GET(FA,INTEGER);
+					IF (ACPU=-1)THEN 
+						BEGIN && fine applicazione
+						FOR I:=1 STEP 1 UNTIL NSOFTW DO 
+						BEGIN
+							WA:=(HOSTS#(SW#(I).EXIT).WEBTIMER.FIRST)::WEBAPP;
+							WHILE (WA<>NIL) DO 
+							BEGIN
+								IF (WA.NEXT=NIL) THEN 
+								BEGIN 
+									TRANSIT (WA,OUT);
+									WA:=NIL;
+								END
+								ELSE 
+								BEGIN 
+									WA:=(WA.NEXT)::WEBAPP;
+									TRANSIT (WA.PREVIOUS,OUT);
+								END;
+							END;
+						END;
+						PRINT ("FINE APPLICAZIONE");
+						PRINT ("FINE APPLICAZIONE",TIME);
+						CLOSE(FA);
+						TRANSIT(OUT); 
+					END;
+					
+					AD:=GET(FA,INTEGER);
+               		AT:=GET(FA,INTEGER);	
+               		N:=GET(FA,INTEGER);
+               		IF (N=0) THEN PRINT ("ERROR: I dati non sono consistenti");
+               		BCPU:=GET(FA,INTEGER);
+               		BD:=GET(FA,INTEGER);
+					WTOUT:=N*2+ACPU*2+AD*2+AT*2+BCPU*2+BD*2;
+               		NewLn(FA);
+               		OP:=1;
+               		TRANSIT (TERM#(EXIT).SCH);
+               		END;
+               	END;
+ TRANSIT=OUT;
+    	

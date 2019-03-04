@@ -33,3 +33,39 @@
     transform: rotate(360deg);
   }
 }
+
+
+
+.char {
+  width: auto;
+  height: auto;
+}
+
+.edge {
+  stroke: #bdc3c7;
+  stroke-opacity: 0.6;
+  stroke-width: 2px;
+  fill: transparent;
+}
+
+.node {
+  stroke: #2980b9;
+  stroke-width: 2.5px;
+  fill:red;
+  background-color: red;
+}
+
+red {
+  stroke: #2980b9;
+  stroke-width: 2.5px;
+  fill:red;
+  background-color: red;
+}
+
+.filter-green{
+  filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%);
+}
+
+.current-node {
+  fill: #1abc9c;
+}

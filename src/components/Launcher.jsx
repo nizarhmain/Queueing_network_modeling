@@ -42,7 +42,7 @@ class Launcher extends Component {
   render() {
     return (
       <div>
-        <Row style={{ marginTop: "20%" }}>
+        <Row>
           <Col span={8} offset={8}>
             <Input
               style={{ margin: 10 }}

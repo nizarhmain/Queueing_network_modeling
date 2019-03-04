@@ -1,10 +1,14 @@
 const express = require("express");
 const app = express();
 const port = 8000;
+const cors = require('cors');
 
 const fs = require("fs");
 
 const exec = require("child_process").exec;
+
+app.use(cors());
+
 
 app.get("/", (req, res) => {
   res.send("Hello world");
@@ -22,7 +26,7 @@ app.get("/reset", (req, res) => {
 });
 
 // reads the file result.txt and sends it to the front end
-app.get("/read_result", (req, res) => {
+app.get("/result", (req, res) => {
   try {
     let data = fs.readFileSync("./qnap_code/result.txt", "utf8");
 

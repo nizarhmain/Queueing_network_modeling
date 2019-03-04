@@ -1,7 +1,6 @@
 import React, {Component} from 'react';
 import * as d3 from "d3";
-import Button from 'antd/lib/button';
-import { Input } from 'antd';
+
 
 class BarChart extends Component {
     componentDidMount() {
@@ -15,7 +14,7 @@ class BarChart extends Component {
     drawChart() {
       const data = [12, 5, 6, 6, 9, 10];
          
-      const svg = d3.select("body").append("svg")
+      const svg = d3.select(".barChart").append("svg")
       .attr("width", this.props.width)
       .attr("height", this.props.height)
       .style("margin-left", 100);
@@ -36,10 +35,6 @@ class BarChart extends Component {
     render(){
       return( 
       <div id={"#" + this.props.id}>
-      
-      <Input placeholder="input with clear icon" allowClear onChange={this.onChange} />
-      <Input placeholder="input with clear icon" allowClear onChange={this.onChange} />
-      <Button type="primary">Button</Button>
       </div>
       )
     }

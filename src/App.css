@@ -36,9 +36,8 @@
 
 
 
-.char {
-  width: auto;
-  height: auto;
+.chart {
+  margin-left: 20%;
 }
 
 .edge {
@@ -68,4 +67,19 @@ red {
 
 .current-node {
   fill: #1abc9c;
+}
+
+
+
+/* SVG styles */
+.network {
+  flex-basis: 100%;
+  margin-left: 20%;
+  min-width: 200px;
+}
+.links line {
+  stroke: #aaa;
+}
+.nodes circle {
+  pointer-events: all;
 }

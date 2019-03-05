@@ -56,6 +56,31 @@ class Launcher extends Component {
               allowClear
               onChange={this.onChange}
             />
+            <Input
+              style={{ margin: 10 }}
+              placeholder="input with clear icon"
+              allowClear
+              onChange={this.onChange}
+            />
+            <Input
+              style={{ margin: 10 }}
+              placeholder="input with clear icon"
+              allowClear
+              onChange={this.onChange}
+            />
+            <Input
+              style={{ margin: 10 }}
+              placeholder="input with clear icon"
+              allowClear
+              onChange={this.onChange}
+            />
+            <Input
+              style={{ margin: 10 }}
+              placeholder="input with clear icon"
+              allowClear
+              onChange={this.onChange}
+            />
+
             <Col span={12}>
             <Button
               type="primary"

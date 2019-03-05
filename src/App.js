@@ -7,23 +7,31 @@ import Launcher from "./components/Launcher";
 import Network from "./components/Network";
 import Markov from "./components/Markov";
 
+import { Input, Row, Col } from "antd";
+
 class App extends Component {
   state = {
     data: [12, 5, 6, 6, 9, 10],
-    width: 800,
-    height: 800
+    width: "1000",
+    height: "1000"
   };
 
   render() {
     return (
-		<div className="App">
-	  
-        <Launcher />
+      <div className="App">
+        <Row>
+          <h1>Queueing Systems - Network modeling</h1>
+          <Col span={9}>
+            <Launcher />
+          </Col>
+          <Col span={12}>
+            <Network width={this.state.width} height={this.state.height} />
+          </Col>
+          <Col span={12}>
+            <Markov />
+          </Col>
 
-        <Network width={this.state.width} height={this.state.height} />
-
-        <Markov/>
-        
+        </Row>
       </div>
     );
   }

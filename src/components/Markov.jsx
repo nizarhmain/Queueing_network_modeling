@@ -77,16 +77,6 @@ class Markov extends Component {
       width = +svg.attr(800),
       height = +svg.attr(800);
 
-    var edges = svg
-      .selectAll("path")
-      .data(data.edges)
-      .enter()
-      .append("path")
-      .attr("class", "edge");
-
-    // Draw edges before nodes
-    drawEdges();
-
     var nodes = svg
       .selectAll("image")
       .data(data.nodes)
@@ -108,58 +98,7 @@ class Markov extends Component {
       })
       .call(d3.drag().on("drag", drag));
 
-    function drawEdges() {
-      edges.attr("d", function(d) {
-        // Initial and final coordinates
-        var x1 = data.nodes[d.source].x + 43,
-          y1 = data.nodes[d.source].y + 43,
-          x2 = data.nodes[d.target].x + 43,
-          y2 = data.nodes[d.target].y + 43;
-
-        if (x1 == x2 && y1 == y2) return drawBezierCurve(x1, y1);
-        return drawQuadraticCurve(x1, y1, x2, y2);
-      });
-    }
-
-    function drawQuadraticCurve(x1, y1, x2, y2) {
-      // Angle between initial and final coordinates
-      var theta = Math.atan2(y2 - y1, x2 - x1);
-
-      // How far the curve will be from the line connecting the two nodes
-      var h = 80;
-
-      // Curve control point
-      var xf = (x1 + x2) / 2 + h * Math.cos(theta + Math.PI / 2),
-        yf = (y1 + y2) / 2 + h * Math.sin(theta + Math.PI / 2);
-
-      // Creating quadratic curve
-      // https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths
-      return "M" + x1 + " " + y1 + " Q " + xf + " " + yf + ", " + x2 + " " + y2;
-    }
-
-    function drawBezierCurve(x, y) {
-      // Creating Bézier curve with fixed size and orientation
-      var d = 50;
-      return (
-        "M" +
-        x +
-        " " +
-        y +
-        " C " +
-        (x + d) +
-        " " +
-        (y + d) +
-        ", " +
-        (x - d) +
-        " " +
-        (y + d) +
-        ", " +
-        x +
-        " " +
-        y
-      );
-    }
-
+    
     function drag(d) {
       d.x = d3.event.x;
       d.y = d3.event.y;
@@ -168,8 +107,7 @@ class Markov extends Component {
         .attr("x", d.x)
         .attr("y", d.y);
 
-      // Redraw edges after dragging a node
-      drawEdges();
+      
     }
 
     function simulate() {
@@ -193,9 +131,8 @@ class Markov extends Component {
 
   render() {
     return (
-        <svg className={"chart"}>
-          <rect />
-        </svg>
+      <div id={"#" + this.props.id}>
+      </div>
     );
   }
 }

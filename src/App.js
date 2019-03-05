@@ -10,8 +10,8 @@ import Markov from "./components/Markov";
 class App extends Component {
   state = {
     data: [12, 5, 6, 6, 9, 10],
-    width: 700,
-    height: 500
+    width: 800,
+    height: 800
   };
 
   render() {

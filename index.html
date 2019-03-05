@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Graph editing tools</title>
+    <link type="text/css" href="index.css" rel="stylesheet" />
+
+    <script
+      src="//ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"
+      type="text/javascript"
+    ></script>
+
+    <script src="https://d3js.org/d3.v3.min.js"></script>
+
+    <script>
+      d3version3 = d3;
+      window.d3 = null;
+    </script>
+
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+
+    <script>
+      d3version4 = d3;
+      window.d3 = null;
+    </script>
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/britecharts/dist/css/britecharts.min.css"
+      type="text/css"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.4/css/bulma.css"
+      type="text/css"
+    />
+
+    <!-- CDN is still a WIP, when it's ready the js cdn bundle should be inserted beow! -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/britecharts@2/dist/bundled/britecharts.min.js"
+      type="text/javascript"
+    ></script>
+
+    <script
+      defer
+      src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"
+    ></script>
+  </head>
+  <body onload="main()">
+    <section class="section">
+        <div class="container" style="margin-top:100px; margin-bottom: 100px;">
+                <a class="button is-large is-rounded" onclick="reset_simulation()">Reset</a>
+                <a class="button is-large is-primary is-rounded" onclick="fetch_results()">Launch simulation</a>
+        </div>
+
+        <div class="container">
+
+
+            <div class="tile is-ancestor">
+                    <div class="tile is-4 is-vertical is-parent">
+                      <div class="tile is-child box">
+                        <p class="title">One</p>
+                        <div class="step" widht="300" height="300"></div>
+                    </div>
+                      <div class="tile is-child box">
+                        <p class="title">Two</p>
+                        <div class="bar" widht="400" height="300"></div>
+                        <div class="donut" widht="400" height="300"></div>
+                    </div>
+                    </div>
+                    <div class="tile is-parent">
+                      <div class="tile is-child box">
+                        <p class="title">Network overview</p>
+                        <div class="network"></div>
+                        <h1>Network in action</h1>
+                        <svg class="chart" width="800" height="600">
+                          <rect
+                            id="rectangle" x="0" y="0" width="10" height="10" fill="lightgreen"/>
+                        </svg>
+
+                    </div>
+                    </div>
+                  </div>
+
+
+        <button onclick="fetch_results()">fetch results</button>
+        <button onclick="reset_simulation()">reset_simulation</button>
+
+
+
+        
+        <div class="stackedArea" widht="500" height="300"></div>
+        <div class="line" widht="900" height="300"></div>
+        <div class="brush" widht="600" height="100"></div>
+      </div>
+    </section>
+  </body>
+
+  <script src="./d3_graphs/markov-chain.js"></script>
+  <script src="./d3_graphs/network_graph.js"></script>
+  <script src="./d3_graphs/generic_chart.js"></script>
+  <script src="./server_interaction.js"></script>
+</html>

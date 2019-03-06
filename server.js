@@ -40,7 +40,67 @@ app.get("/result", (req, res) => {
   }
 });
 
+const mockedData = {
+  "nodes": [
+    {
+      "name": "Node1 one",
+      "label": "Node1",
+      "id": 1,
+      "links": [1, 2]
+    },
+    {
+      "name": "Node2",
+      "label": "Node2",
+      "id": 2,
+      "links": [2, 3]
+    },
+    {
+      "name": "Node3",
+      "label": "Node3",
+      "id": 3,
+      "links": [2, 3, 4]
+    },
+    {
+      "name": "Node4",
+      "label": "Node4",
+      "id": 4,
+      "links": [4]
+    }
+  ],
+  "links": [
+    {
+      "id": 1,
+      "source": 1,
+      "target": 2,
+      "type": "Foo",
+      "since": 2010
+    },
+    {
+      "id": 2,
+      "source": 1,
+      "target": 3,
+      "type": "Bar"
+    },
+    {
+      "id": 3,
+      "source": 2,
+      "target": 3,
+      "type": "Baz"
+    },
+    {
+      "id": 4,
+      "source": 3,
+      "target": 4,
+      "type": "Foo2"
+    }
+  ]
+}
 
+
+// reads the file result.txt and sends it to the front end
+app.get("/model", (req, res) => {
+  res.send(mockedData)
+});
 
 
 // starts the app

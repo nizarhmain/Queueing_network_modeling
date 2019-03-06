@@ -25,6 +25,10 @@
       window.d3 = null;
     </script>
 
+    
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-selection/1.2.0/d3-selection.js"></script>
+
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/britecharts/dist/css/britecharts.min.css"
@@ -48,58 +52,112 @@
       src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"
     ></script>
   </head>
-  <body onload="main()">
+  <body">
     <section class="section">
-        <div class="container" style="margin-top:100px; margin-bottom: 100px;">
-                <a class="button is-large is-rounded" onclick="reset_simulation()">Reset</a>
-                <a class="button is-large is-primary is-rounded" onclick="fetch_results()">Launch simulation</a>
+      <!-- INPUT SECTION FOR MODEL . DAT -->
+      <section class="hero is-success">
+        <div class="hero-body">
+          <div class="container has-text-centered">
+            <h1 class="title">
+              Qnap Model Configuration
+            </h1>
+          </div>
         </div>
 
-        <div class="container">
+        <div class="hero-foot">
+          <nav class="tabs is-boxed is-fullwidth is-large">
+            <div class="container">
+              <ul>
+                <li class="tab is-active" onclick="openTab(event,'Global')">
+                  <a>Configurazione globale</a>
+                  </li>
+                <li class="tab" onclick="openTab(event,'Routers')">
+                  <a>Router Configuration</a>
+                </li>
+                <li class="tab" onclick="openTab(event,'Vie')">
+                  <a>Vie</a>
+                </li>
+                <li class="tab" onclick="openTab(event,'Istradamenti')">
+                  <a>Istradamenti</a>
+                </li>
+              </ul>
+            </div>
+          </nav>
+        </div>
+      </section>
 
+      <div class="tab_contents container section">
+       
+        <!-- LOADED USING JQUERY -->
+       
+      </div>
+      <!-- -->
+      <div class="container" style="margin-top:100px; margin-bottom: 100px;">
+        <a class="button is-large is-rounded" onclick="reset_simulation()">Reset</a>
+        <a
+          class="button is-large is-primary is-rounded"
+          onclick="fetch_results()"
+          >Launch simulation</a
+        >
+      </div>
 
-            <div class="tile is-ancestor">
-                    <div class="tile is-4 is-vertical is-parent">
-                      <div class="tile is-child box">
-                        <p class="title">One</p>
-                        <div class="step" widht="300" height="300"></div>
-                    </div>
-                      <div class="tile is-child box">
-                        <p class="title">Two</p>
-                        <div class="bar" widht="400" height="300"></div>
-                        <div class="donut" widht="400" height="300"></div>
-                    </div>
-                    </div>
-                    <div class="tile is-parent">
-                      <div class="tile is-child box">
-                        <p class="title">Network overview</p>
-                        <div class="network"></div>
-                        <h1>Network in action</h1>
-                        <svg class="chart" width="800" height="600">
-                          <rect
-                            id="rectangle" x="0" y="0" width="10" height="10" fill="lightgreen"/>
-                        </svg>
+      <div class="container">
+        <div class="tile is-ancestor">
+          <div class="tile is-4 is-vertical is-parent">
+            <div class="tile is-child box">
+              <p class="title">One</p>
+              <div class="step" widht="300" height="300"></div>
+            </div>
+            <div class="tile is-child box">
+              <p class="title">Two</p>
+              <div class="bar" widht="400" height="300"></div>
+              <div class="donut" widht="400" height="300"></div>
+            </div>
+          </div>
+          <div class="tile is-parent">
+            <div class="tile is-child box">
+              <p class="title">Network overview</p>
+              <svg id="directed_graph" width=960 height=600></svg>
+              <h1>Network in action</h1>
+              <svg class="chart" width="800" height="600">
+                <rect
+                  id="rectangle"
+                  x="0"
+                  y="0"
+                  width="10"
+                  height="10"
+                  fill="lightgreen"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
 
-                    </div>
-                    </div>
-                  </div>
-
-
-        <button onclick="fetch_results()">fetch results</button>
-        <button onclick="reset_simulation()">reset_simulation</button>
-
-
-
-        
         <div class="stackedArea" widht="500" height="300"></div>
         <div class="line" widht="900" height="300"></div>
         <div class="brush" widht="600" height="100"></div>
       </div>
     </section>
+
   </body>
 
-  <script src="./d3_graphs/markov-chain.js"></script>
-  <script src="./d3_graphs/network_graph.js"></script>
-  <script src="./d3_graphs/generic_chart.js"></script>
+  
+
+  <!--<script src="./d3_graphs/markov-chain.js"></script> -->
+  <!--<script src="./d3_graphs/network_graph.js"></script>
+  <script src="./d3_graphs/generic_chart.js"></script> -->
   <script src="./server_interaction.js"></script>
+  <script src="./input_tab_model.js"></script>
+
+  <!-- <script src="./d3_graphs/directed_graph_linan.js"></script> -->
+
+  <script>
+  
+  // this script loads the tabella html into that place
+    $(function(){
+      $(".tab_contents").load("tabella_input.html"); 
+    });
+    </script> 
+
+
 </html>

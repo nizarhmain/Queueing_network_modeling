@@ -4,14 +4,15 @@ function fetch_results() {
     method: "GET" // *GET, POST, PUT, DELETE, etc.
     //body: script // body data type must match "Content-Type" header
   })
-    .then(response => response.text())
+    .then(response => response.json())
     .then(result => {
       console.log(result);
-
+      
       // lazy load the script that loads the network
       loadScript("./d3_graphs/markov-chain.js")
 
-      loadScript("./d3_graphs/network_graph.js")
+      // not using this one anymore
+      //loadScript("./d3_graphs/network_graph.js")
 
       loadScript("./d3_graphs/directed_graph_linan.js")
 

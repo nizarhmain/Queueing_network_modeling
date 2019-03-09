@@ -100,9 +100,9 @@ const mockedData = {
 
 // reads the file result.txt and sends it to the front end
 app.get("/model", (req, res) => {
-  function createNode(id, label) {
+  function createNode(id, label, type) {
     return {
-      name: "Router " + id,
+      name: type + label,
       label: label,
       id: id,
       links: []
@@ -140,8 +140,26 @@ app.get("/model", (req, res) => {
   for (let i = 8; i < 16; i++) {
     let id = parrots[i][0];
     let label = parrots[i][2];
-    routers.push(createNode(id, label));
+    routers.push(createNode(id, id, "Router "));
   }
+
+  let hosts = []
+
+  for (let i = 47; i < 63; i++) {
+    let label = parrots[i][0];
+    hosts.push(createNode(i, label, "Host "));
+  }
+
+
+  let terminals = []
+
+  for (let i = 67; i < 83; i++) {
+    let label = parrots[i][0];
+    terminals.push(createNode(i, label, "Terminal "));
+  }
+
+  console.log(terminals);
+
 
   let vie = []
 
@@ -152,9 +170,13 @@ app.get("/model", (req, res) => {
 
   let links = []
 
+  // appending the routers in this first part
+  // Loops through the routers
   for (let i = 37; i < 45; i++) {
     let router_id = parrots[i][0];
     let destination_via = parrots[i][1]
+
+    // can make another loop here, but keeping it static to keep it simple
 
     if(router_id !== vie[destination_via-1]) {
         links.push(createLink(i, router_id, vie[destination_via-1], destination_via))
@@ -182,9 +204,35 @@ app.get("/model", (req, res) => {
     
   }
 
+  // creating the links between hosts and routers
+
+  for (let i = 47; i < 63; i++) {
+    let id = parrots[i][0]
+    let host_id = i
+    let router_id = parrots[i][11].slice(0,1);
+
+    links.push(createLink(i, host_id, router_id, id))
+  }
+
+  // creating the links between the terminals and the hosts
+  for (let i = 67; i < 83; i++) {
+    let id = parrots[i][0]
+    // if real id is 2, then the id will be 48, 47 is 1, 48 is 2
+    let terminal_id = i
+
+    let host_id = parseInt(parrots[i][7])+46
+    host_id = host_id.toString()
+
+    links.push(createLink(i, terminal_id, host_id, id))
+  }
+
+
+
+  // ADD HOSTS AND TERMINALS TO GENERATE THE NETWORK
+
 
   let finalRouters = {
-    nodes: routers,
+    nodes: routers.concat(hosts).concat(terminals),
     links: links
 
   };

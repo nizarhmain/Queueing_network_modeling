@@ -151,6 +151,7 @@ app.get("/model", (req, res) => {
   }
 
 
+  
   let terminals = []
 
   for (let i = 67; i < 83; i++) {
@@ -160,7 +161,6 @@ app.get("/model", (req, res) => {
 
   console.log(terminals);
 
-
   let vie = []
 
   for (let i = 18; i < 35; i++) {
@@ -169,8 +169,7 @@ app.get("/model", (req, res) => {
   }
 
   let links = []
-
-  // appending the routers in this first part
+  // appending the routers in this first partf
   // Loops through the routers
   for (let i = 37; i < 45; i++) {
     let router_id = parrots[i][0];

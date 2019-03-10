@@ -6,7 +6,10 @@ function fetch_results() {
   })
     .then(response => response.json())
     .then(result => {
-      console.log(result);
+      //console.log(result);
+
+      // declaring global variable so charts can call from this one
+      window.model_results = result
       
       // lazy load the script that loads the network
       loadScript("./d3_graphs/markov-chain.js")

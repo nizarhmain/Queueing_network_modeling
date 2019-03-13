@@ -1,0 +1,89 @@
+& VARIABILI GLOBALI
+  &Numero Hosts  Numero Router Numero Vie Numero Software   Capacità Emissione     Capacità Ricezione     Capacità Buffer
+         nHost            nRouter          nVie       nSoftware                   capEmmissione               capRicezione                  capBuffer ;
+& SIMULAZIONE
+& TMAX     TEMPO RQ    PERIOD
+S_tmax   S_tempoRQ      S_period;
+& ROUTERS
+  &   ID   Uscite  Rate  P_Err
+       1      R_1_uscite   R_1_rate  R_1_p_err;
+       2      R_2_uscite   R_2_rate  R_2_p_err;
+       3      R_3_uscite   R_3_rate  R_3_p_err;
+       4      R_4_uscite   R_4_rate  R_4_p_err;
+       5      R_5_uscite   R_5_rate  R_5_p_err;
+       6      R_6_uscite   R_6_rate  R_6_p_err;
+       7      R_7_uscite   R_7_rate  R_7_p_err;
+       8      R_8_uscite   R_8_rate  R_8_p_err;
+& VIE
+& ID        Tempo Propag    Router Dest
+   1            V_1_temp_prop           V_1_router_des;
+   2            V_2_temp_prop           V_2_router_des;
+   3            V_3_temp_prop           V_3_router_des;
+   4            V_4_temp_prop           V_4_router_des;
+   5            V_5_temp_prop           V_5_router_des;
+   6            V_6_temp_prop           V_6_router_des;
+   7            V_7_temp_prop           V_7_router_des;
+   8            V_8_temp_prop           V_8_router_des;
+   9            V_9_temp_prop           V_9_router_des;
+  10            V_10_temp_prop          V_10_router_des;
+  11            V_11_temp_prop          V_11_router_des;
+  12            V_12_temp_prop          V_12_router_des;
+  13            V_13_temp_prop          V_13_router_des;
+  14            V_14_temp_prop          V_14_router_des;
+  15            V_15_temp_prop          V_15_router_des;
+  16            V_16_temp_prop          V_16_router_des;
+  17            V_17_temp_prop          V_17_router_des;
+& INSTRADAMENTI ROUTER
+     &Router_ID     Via IstrProb  Via Istr Prob Via IstrProb Via IstrProb Via IstrProb
+             1          1.0;
+             2       1   0.4       3   0.3      16  0.3;
+             3      15   1.0;
+             4       4   0.6       6   0.4;
+             5       5   0.2       8   0.1      10  0.2      14     0.2   17  0.3;
+             6      11   0.6      12   0.4;
+             7      13   1.0;
+             8       7   0.5       9   0.5;
+& HOSTS
+ & ID      TEI         TEA       TRI         TRA           TIME_OUT        WIN_SIZ      LI          SSO           LA          LineHR        Router
+      1    H_1_tei     H_1_tea   H_1_tri     H_1_tra       H_1_timeOut     H_1_win      H_1_li      H_1_sso       H_1_la      H_1_lineHR    H_1_router;
+      2    H_2_tei     H_2_tea   H_2_tri     H_2_tra       H_2_timeOut     H_2_win      H_2_li      H_2_sso       H_2_la      H_2_lineHR    H_2_router;
+      3    H_3_tei     H_3_tea   H_3_tri     H_3_tra       H_3_timeOut     H_3_win      H_3_li      H_3_sso       H_3_la      H_3_lineHR    H_3_router;
+      4    H_4_tei     H_4_tea   H_4_tri     H_4_tra       H_4_timeOut     H_4_win      H_4_li      H_4_sso       H_4_la      H_4_lineHR    H_4_router;
+      5    H_5_tei     H_5_tea   H_5_tri     H_5_tra       H_5_timeOut     H_5_win      H_5_li      H_5_sso       H_5_la      H_5_lineHR    H_5_router;
+      6    H_6_tei     H_6_tea   H_6_tri     H_6_tra       H_6_timeOut     H_6_win      H_6_li      H_6_sso       H_6_la      H_6_lineHR    H_6_router;
+      7    H_7_tei     H_7_tea   H_7_tri     H_7_tra       H_7_timeOut     H_7_win      H_7_li      H_7_sso       H_7_la      H_7_lineHR    H_7_router;
+      8    H_8_tei     H_8_tea   H_8_tri     H_8_tra       H_8_timeOut     H_8_win      H_8_li      H_8_sso       H_8_la      H_8_lineHR    H_8_router;
+      9    H_9_tei     H_9_tea   H_9_tri     H_9_tra       H_9_timeOut     H_9_win      H_9_li      H_9_sso       H_9_la      H_9_lineHR    H_9_router;
+     10    H_10_tei    H_10_tea  H_10_tri    H_10_tra      H_10_timeOut    H_10_win     H_10_li     H_10_sso      H_10_la     H_10_lineHR   H_10_router;
+     11    H_11_tei    H_11_tea  H_11_tri    H_11_tra      H_11_timeOut    H_11_win     H_11_li     H_11_sso      H_11_la     H_11_lineHR   H_11_router;
+     12    H_12_tei    H_12_tea  H_12_tri    H_12_tra      H_12_timeOut    H_12_win     H_12_li     H_12_sso      H_12_la     H_12_lineHR   H_12_router;
+     13    H_13_tei    H_13_tea  H_13_tri    H_13_tra      H_13_timeOut    H_13_win     H_13_li     H_13_sso      H_13_la     H_13_lineHR   H_13_router;
+     14    H_14_tei    H_14_tea  H_14_tri    H_14_tra      H_14_timeOut    H_14_win     H_14_li     H_14_sso      H_14_la     H_14_lineHR   H_14_router;
+     15    H_15_tei    H_15_tea  H_15_tri    H_15_tra      H_15_timeOut    H_15_win     H_15_li     H_15_sso      H_15_la     H_15_lineHR   H_15_router;
+     16    H_16_tei    H_16_tea  H_16_tri    H_16_tra      H_16_timeOut    H_16_win     H_16_li     H_16_sso      H_16_la     H_16_lineHR   H_16_router;
+
+
+& Terminal
+&IDT Actives    Name    Lenght      Tempo CPU   Tempo Disk  Line TH     IDH
+1    T_1_act    "T1"    T_1_leng    T_1_temp1   0.015       T_1_line    1;
+2    T_2_act    "T2"    T_2_leng    T_2_temp1   0.015       T_2_line    2;
+3    T_3_act    "T3"    T_3_leng    T_3_temp1   0.015       T_3_line    3;
+4    T_4_act    "T4"    T_4_leng    T_4_temp1   0.015       T_4_line    4;
+5    T_5_act    "T5"    T_5_leng    T_5_temp1   0.015       T_5_line    5;
+6    T_6_act    "T6"    T_6_leng    T_6_temp1   0.015       T_6_line    6;
+7    T_7_act    "T7"    T_7_leng    T_7_temp1   0.015       T_7_line    7;
+8    T_8_act    "T8"    T_8_leng    T_8_temp1   0.015       T_8_line    8;
+9    T_9_act    "T9"    T_9_leng    T_9_temp1   0.015       T_9_line    9;
+10   T_10_act   "T10"   T_10_leng   T_10_temp1  0.015       T_10_line  10;
+11   T_11_act   "T11"   T_11_leng   T_11_temp1  0.015       T_11_line  11;
+12   T_12_act   "T12"   T_12_leng   T_12_temp1  0.015       T_12_line  12;
+13   T_13_act   "T13"   T_13_leng   T_13_temp1  0.015       T_13_line  13;
+14   T_14_act   "T14"   T_14_leng   T_14_temp1  0.015       T_14_line  14;
+15   T_15_act   "T15"   T_15_leng   T_15_temp1  0.015       T_15_line  15;
+16   T_16_act   "T16"   T_16_leng   T_16_temp1  0.015       T_16_line  16;
+& Web Application
+&IDS   exit  Role   File
+ 1   8   	    1     "server.app";
+ 0   12       2     1;
+ 0   13       3     1;
+

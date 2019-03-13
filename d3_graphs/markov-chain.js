@@ -5,6 +5,7 @@ $(function () {
             this.state = 0;
         }
 
+
         transition() {
             var rectTransition = d3version4.select("#rectangle").transition();
 
@@ -36,11 +37,14 @@ $(function () {
         }
     }
 
+    console.log(salah)
+
     var data = {
         nodes: [
             { id: 'A', x: 100, y: 100 },
             { id: 'B', x: 200, y: 100 },
-            { id: 'C', x: 300, y: 100 }
+            { id: 'C', x: 300, y: 100 },
+            { id: 'D', x: 300, y: 100 }
         ],
         edges: [
             { source: 0, target: 0, probability: 0.5 },
@@ -146,10 +150,11 @@ $(function () {
             .attr('y', d.y);
 
         // Redraw edges after dragging a node
-        //drawEdges();
+        drawEdges();
     }
 
     function simulate() {
+
         markov = new MarkovChain(
             [[0, 1, 0],
             [0, 0, 1],

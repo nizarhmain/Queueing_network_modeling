@@ -1,3 +1,4 @@
+
 // Router Bar
 let rate_barChart = britecharts.bar();
 
@@ -7,14 +8,14 @@ for (let i = 8; i < 16; i++) {
   const router_name = "Router " + model_results[i][0];
   const router_rate = model_results[i][2];
 
-  console.log(router_rate);
+  //console.log(router_rate);
 
   router_object = { name: router_name, value: router_rate };
 
   rate_barData.push(router_object);
 }
 
-console.log(model_results);
+//console.log(model_results);
 
 rate_barChart
   .colorSchema(britecharts.colors.colorSchemas.britecharts)
@@ -35,7 +36,7 @@ for (let i = 8; i < 16; i++) {
   const router_name = "Router " + model_results[i][0];
   const router_rate = model_results[i][3].slice(0, 5);
 
-  console.log(router_rate.slice(0, 5));
+  //console.log(router_rate.slice(0, 5));
 
   router_object = { name: router_name, value: router_rate };
 
@@ -77,6 +78,7 @@ for (let i = 18; i < 35; i++) {
     }
 
 }
+
 
 
 let counters_sum = counters.reduce(function(a, b) { return a + b; }, 0);
@@ -124,8 +126,6 @@ d3version4
   .datum(donutData)
   .call(donutLegend);
 
-
-
 // PROPAGATION RATE BAR
 
 let propagation_barChart = britecharts.bar();
@@ -150,7 +150,6 @@ d3version4
   .select(".propagation_bar")
   .datum(propagation_barData)
   .call(propagation_barChart);
-
 
 
 

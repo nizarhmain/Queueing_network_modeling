@@ -1,661 +1,133 @@
+
 <div id="Global" class="content-tab">
     <div class="columns">
       <div class="column">
-          <input id="capEmissione" class="input" type="text" placeholder="Capacità Emissione" />
+          <h2>Capacità Emissione</h2>
+          <input id="capEmmissione" value="256.0" class="input" type="text" placeholder="Capacità Emissione" />
       </div>
       <div class="column">
-          <input id="capRicezione" class="input" type="text" placeholder="Capacità Ricezione" />
+          <h2>Capacità Ricezione</h2>
+          <input id="capRicezione" value="256.0" class="input" type="text" placeholder="Capacità Ricezione" />
       </div>
       <div class="column">
-          <input id="capBuffer" class="input" type="text" placeholder="Capacità Buffer" />
+          <h2>Capacità Buffer</h2>
+          <input id="capBuffer" value="400.0" class="input" type="text" placeholder="Capacità Buffer" />
       </div>
     </div>
   </div>
   
-  <div id="Routers" class="content-tab">
+  <div id="Routers" class="content-tab"  style="display:none">
     <div class="columns">
       <div class="column">
-        <input class="input" type="text" placeholder="ID" />
-        <input class="input" type="text" placeholder="ID" />
-
-        <input class="input" type="text" placeholder="ID" />
-
-        <input class="input" type="text" placeholder="ID" />
-
-        <input class="input" type="text" placeholder="ID" />
-
-        <input class="input" type="text" placeholder="ID" />
-
-        <input class="input" type="text" placeholder="ID" />
-
-        <input class="input" type="text" placeholder="ID" />
+        <h2>ID</h2>
+        <input class="input" type="text" value="1" placeholder="ID" />
+        <input class="input" type="text" value="2" placeholder="ID" />
+        <input class="input" type="text" value="3" placeholder="ID" />
+        <input class="input" type="text" value="4" placeholder="ID" />
+        <input class="input" type="text" value="5" placeholder="ID" />
+        <input class="input" type="text" value="6" placeholder="ID" />
+        <input class="input" type="text" value="7" placeholder="ID" />
+        <input class="input" type="text" value="8" placeholder="ID" />
       </div>
       <div class="column">
-        <input class="input" type="text" placeholder="Uscite" />
-        <input class="input" type="text" placeholder="Uscite" />
-
-        <input class="input" type="text" placeholder="Uscite" />
-
-        <input class="input" type="text" placeholder="Uscite" />
-
-        <input class="input" type="text" placeholder="Uscite" />
-
-        <input class="input" type="text" placeholder="Uscite" />
-
-        <input class="input" type="text" placeholder="Uscite" />
-
-        <input class="input" type="text" placeholder="Uscite" />
+          <h2>Uscite</h2>
+        <input id="R_1_uscite" value="1" class="input" type="text" placeholder="Uscite" />
+        <input id="R_2_uscite" value="3" class="input" type="text" placeholder="Uscite" />
+        <input id="R_3_uscite" value="1" class="input" type="text" placeholder="Uscite" />
+        <input id="R_4_uscite" value="2" class="input" type="text" placeholder="Uscite" />
+        <input id="R_5_uscite" value="5" class="input" type="text" placeholder="Uscite" />
+        <input id="R_6_uscite" value="2" class="input" type="text" placeholder="Uscite" />
+        <input id="R_7_uscite" value="1" class="input" type="text" placeholder="Uscite" />
+        <input id="R_8_uscite" value="2" class="input" type="text" placeholder="Uscite" />
       </div>
       <div class="column">
-        <input class="input" type="text" placeholder="Rate" />
-        <input class="input" type="text" placeholder="Rate" />
-
-        <input class="input" type="text" placeholder="Rate" />
-
-        <input class="input" type="text" placeholder="Rate" />
-
-        <input class="input" type="text" placeholder="Rate" />
-
-        <input class="input" type="text" placeholder="Rate" />
-
-        <input class="input" type="text" placeholder="Rate" />
-
-        <input class="input" type="text" placeholder="Rate" />
+          <h2>Rate</h2>
+        <input id="R_1_rate" value="100.0" class="input" type="text" placeholder="Rate" />
+        <input id="R_2_rate" value="123.0" class="input" type="text" placeholder="Rate" />
+        <input id="R_3_rate" value="111.0" class="input" type="text" placeholder="Rate" />
+        <input id="R_4_rate" value="122.0" class="input" type="text" placeholder="Rate" />
+        <input id="R_5_rate" value="100.0" class="input" type="text" placeholder="Rate" />
+        <input id="R_6_rate" value="123.0" class="input" type="text" placeholder="Rate" />
+        <input id="R_7_rate" value="111.0" class="input" type="text" placeholder="Rate" />
+        <input id="R_8_rate" value="50.0" class="input" type="text" placeholder="Rate" />
       </div>
       <div class="column">
-        <input class="input" type="text" placeholder="P_Err" />
-        <input class="input" type="text" placeholder="P_Err" />
-
-        <input class="input" type="text" placeholder="P_Err" />
-
-        <input class="input" type="text" placeholder="P_Err" />
-
-        <input class="input" type="text" placeholder="P_Err" />
-
-        <input class="input" type="text" placeholder="P_Err" />
-
-        <input class="input" type="text" placeholder="P_Err" />
-
-        <input class="input" type="text" placeholder="P_Err" />
+        <h2>P_Err</h2>
+        <input id="R_1_p_err" value="0.001" class="input" type="text" placeholder="P_Err" />
+        <input id="R_2_p_err" value="0.001" class="input" type="text" placeholder="P_Err" />
+        <input id="R_3_p_err" value="0.001" class="input" type="text" placeholder="P_Err" />
+        <input id="R_4_p_err" value="0.001" class="input" type="text" placeholder="P_Err" />
+        <input id="R_5_p_err" value="0.001" class="input" type="text" placeholder="P_Err" />
+        <input id="R_6_p_err" value="0.001" class="input" type="text" placeholder="P_Err" />
+        <input id="R_7_p_err" value="0.001" class="input" type="text" placeholder="P_Err" />
+        <input id="R_8_p_err" value="0.001" class="input" type="text" placeholder="P_Err" />
       </div>
     </div>
   </div>
   <div id="Vie" class="content-tab" style="display:none">
     <div class="columns">
       <div class="column">
-        <input class="input" type="text" placeholder="ID" />
-        <input class="input" type="text" placeholder="ID" />
-        <input class="input" type="text" placeholder="ID" />
-        <input class="input" type="text" placeholder="ID" />
-        <input class="input" type="text" placeholder="ID" />
-        <input class="input" type="text" placeholder="ID" />
-        <input class="input" type="text" placeholder="ID" />
-        <input class="input" type="text" placeholder="ID" />
-        <input class="input" type="text" placeholder="ID" />
-        <input class="input" type="text" placeholder="ID" />
-        <input class="input" type="text" placeholder="ID" />
-        <input class="input" type="text" placeholder="ID" />
-        <input class="input" type="text" placeholder="ID" />
-        <input class="input" type="text" placeholder="ID" />
-        <input class="input" type="text" placeholder="ID" />
-        <input class="input" type="text" placeholder="ID" />
-        <input class="input" type="text" placeholder="ID" />
+        <h2>ID</h2>
+        <input  value="1" class="input" type="text" placeholder="ID" />
+        <input  value="2" class="input" type="text" placeholder="ID" />
+        <input  value="3" class="input" type="text" placeholder="ID" />
+        <input  value="4"class="input" type="text" placeholder="ID" />
+        <input  value="5" class="input" type="text" placeholder="ID" />
+        <input  value="6" class="input" type="text" placeholder="ID" />
+        <input  value="7" class="input" type="text" placeholder="ID" />
+        <input  value="8" class="input" type="text" placeholder="ID" />
+        <input  value="9" class="input" type="text" placeholder="ID" />
+        <input  value="10" class="input" type="text" placeholder="ID" />
+        <input  value="11" class="input" type="text" placeholder="ID" />
+        <input  value="12" class="input" type="text" placeholder="ID" />
+        <input  value="13" class="input" type="text" placeholder="ID" />
+        <input  value="14" class="input" type="text" placeholder="ID" />
+        <input  value="15" class="input" type="text" placeholder="ID" />
+        <input  value="16" class="input" type="text" placeholder="ID" />
+        <input  value="17" class="input" type="text" placeholder="ID" />
       </div>
       <div class="column">
-        <input
-          class="input"
-          type="text"
-          placeholder="Tempo propagazione"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Tempo propagazione"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Tempo propagazione"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Tempo propagazione"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Tempo propagazione"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Tempo propagazione"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Tempo propagazione"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Tempo propagazione"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Tempo propagazione"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Tempo propagazione"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Tempo propagazione"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Tempo propagazione"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Tempo propagazione"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Tempo propagazione"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Tempo propagazione"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Tempo propagazione"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Tempo propagazione"
-        />
+        <h2> Tempo propagazione </h2>
+        <input id="V_1_temp_prop" value="32.0" class="input"type="text" placeholder="Tempo propagazione"/>
+        <input id="V_2_temp_prop" value="32.0" class="input"type="text" placeholder="Tempo propagazione"/>
+        <input id="V_3_temp_prop" value="54.0" class="input"type="text" placeholder="Tempo propagazione"/>
+        <input id="V_4_temp_prop" value="34.0" class="input"type="text" placeholder="Tempo propagazione"/>
+        <input id="V_5_temp_prop" value="11.7" class="input"type="text" placeholder="Tempo propagazione"/>
+        <input id="V_6_temp_prop" value="22.0" class="input"type="text" placeholder="Tempo propagazione"/>
+        <input id="V_7_temp_prop" value="22.0" class="input"type="text" placeholder="Tempo propagazione"/>
+        <input id="V_8_temp_prop" value="12.4" class="input"type="text" placeholder="Tempo propagazione"/>
+        <input id="V_9_temp_prop" value="21.0" class="input"type="text" placeholder="Tempo propagazione"/>
+        <input id="V_10_temp_prop" value="10.5" class="input"type="text" placeholder="Tempo propagazione"/>
+        <input id="V_11_temp_prop" value="10.5" class="input"type="text" placeholder="Tempo propagazione"/>
+        <input id="V_12_temp_prop" value="20.0" class="input"type="text" placeholder="Tempo propagazione"/>
+        <input id="V_13_temp_prop" value="20.0" class="input"type="text" placeholder="Tempo propagazione"/>
+        <input id="V_14_temp_prop" value="11.0" class="input"type="text" placeholder="Tempo propagazione"/>
+        <input id="V_15_temp_prop" value="11.0" class="input"type="text" placeholder="Tempo propagazione"/>
+        <input id="V_16_temp_prop" value="32.0" class="input"type="text" placeholder="Tempo propagazione"/>
+        <input id="V_17_temp_prop" value="54.0" class="input"type="text" placeholder="Tempo propagazione"/>
+        
       </div>
       <div class="column">
-        <input
-          class="input"
-          type="text"
-          placeholder="Router destination"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router destination"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router destination"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router destination"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router destination"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router destination"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router destination"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router destination"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router destination"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router destination"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router destination"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router destination"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router destination"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router destination"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router destination"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router destination"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router destination"
-        />
+        <h2>Router Destination</h2>
+        <input id="V_1_router_des" value="1" class="input"type="text"placeholder="Router destination"/>
+        <input id="V_2_router_des" value="2" class="input"type="text"placeholder="Router destination"/>
+        <input id="V_3_router_des" value="4" class="input"type="text"placeholder="Router destination"/>
+        <input id="V_4_router_des" value="5" class="input"type="text"placeholder="Router destination"/>
+        <input id="V_5_router_des" value="4" class="input"type="text"placeholder="Router destination"/>
+        <input id="V_6_router_des" value="8" class="input"type="text"placeholder="Router destination"/>
+        <input id="V_7_router_des" value="4" class="input"type="text"placeholder="Router destination"/>
+        <input id="V_8_router_des" value="8" class="input"type="text"placeholder="Router destination"/>
+        <input id="V_9_router_des" value="6" class="input"type="text"placeholder="Router destination"/>
+        <input id="V_10_router_des" value="6" class="input"type="text"placeholder="Router destination"/>
+        <input id="V_11_router_des" value="5" class="input"type="text"placeholder="Router destination"/>
+        <input id="V_12_router_des" value="7" class="input"type="text"placeholder="Router destination"/>
+        <input id="V_13_router_des" value="6" class="input"type="text"placeholder="Router destination"/>
+        <input id="V_14_router_des" value="3" class="input"type="text"placeholder="Router destination"/>
+        <input id="V_15_router_des" value="5" class="input"type="text"placeholder="Router destination"/>
+        <input id="V_16_router_des" value="3" class="input"type="text"placeholder="Router destination"/>
+        <input id="V_17_router_des" value="2" class="input"type="text"placeholder="Router destination"/>
       </div>
     </div>
   </div>
-  <div id="Istradamenti" class="content-tab" style="display:none">
-    <div class="columns">
-      <div class="column">
-          <input
-          class="input"
-          type="text"
-          placeholder="Router_id"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router_id"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router_id"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router_id"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router_id"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router_id"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router_id"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Router_id"
-        />
-      </div>
-      <div class="column">
-          <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-      </div>
-      <div class="column">
-          <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-      </div>
-      <div class="column">
-          <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-      </div>
-      <div class="column">
-          <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-      </div>
-      <div class="column">
-          <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-      </div>
-      <div class="column">
-          <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-      </div>
-      <div class="column">
-          <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="Via"
-        />
-      </div>
-      <div class="column">
-          <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-        <input
-          class="input"
-          type="text"
-          placeholder="IstrProb"
-        />
-      </div>
-    </div>
-  </div>
+
+  <input type="submit" value="OK" onClick="sendFormData()">

@@ -9,6 +9,23 @@ const exec = require("child_process").exec;
 
 app.use(cors());
 
+const bodyParser = require("body-parser");
+
+/** bodyParser.urlencoded(options)
+ * Parses the text as URL encoded data (which is how browsers tend to send form data from regular forms set to POST)
+ * and exposes the resulting object (containing the keys and values) on req.body
+ */
+app.use(bodyParser.urlencoded({
+    extended: true
+}));
+
+/**bodyParser.json(options)
+ * Parses the text as JSON and exposes the resulting object on req.body.
+ */
+
+ app.use(bodyParser.json());
+
+
 app.get("/", (req, res) => {
   res.send("Hello world");
 });
@@ -99,14 +116,34 @@ const mockedData = {
 };
 
 
-app.get("/writeToModel", (req,res) => {
+app.post("/writeToModel", (req,res) => {
+
+  //let data = fs.readFileSync("model-X.dat", "utf8");
+  
+  //let changedData = data.replace("R_1_uscite", "1")
+  //res.send(req)
+
+  
   let data = fs.readFileSync("model-X.dat", "utf8");
-  
-  let changedData = data.replace("R_1_uscite", "1")
-  
+
+  let changedData = data
+
+  let new_model_values = req.body.sanitized_inputs
+
+  for (let i = 0; i < new_model_values.length; i++) {
+    const element = new_model_values[i];
+
+    let splitted_element = element.split(' ')
+
+    let key = splitted_element[0]
+    let value = splitted_element[1]
+
+    changedData = changedData.replace(key, value)
+  }
+
   console.log(changedData);
 
-
+  
 })
 
 // reads the file result.txt and sends it to the front end

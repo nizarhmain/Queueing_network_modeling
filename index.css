@@ -1,3 +1,206 @@
+.shogo {
+  width: 100%;
+  height: 800px;
+}
+
+
+.board {
+  margin: auto auto auto auto;
+  margin-top: 100px;
+  width: 800px;
+  height: 800px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+  grid-column-gap: 20px;
+  grid-row-gap: 10px;
+  align-items: center;
+  justify-content: center;
+
+  grid-template-areas:
+  "h1 h2 h3 h4 h5 h6 h7 h8"
+  " . . . . . . . . "
+  " . . . r2 r3 . . . "
+  " . . r1 . . r4 . . "
+  " . . r8 . . r5 . . "
+  " x . . r7 r6 . . . "
+  " . . . . . . . . "
+  "h9 h10 h11 h12 h13 h14 h15 h16";
+}
+
+.packet {
+  width: 30px;
+  height: 30px;
+  grid-area: x;
+  margin-left: 30px;
+  margin-bottom: 40px;
+  transform: translate(700px, -500px);
+  /* animation: simulationAll 85s forwards; */
+  background: url("images/mail_closed.png") no-repeat;
+  background-position: bottom;
+  /* animation-delay: 1s; */
+  border: none;
+}
+
+.packet-active {
+  animation: simulationAll 85s forwards;
+}
+
+
+
+
+
+@keyframes simulationAll {
+  /* H8 TO H12 */
+  0% { transform: translate(700px, -500px); background: url("images/mail_closed.png") no-repeat; background-position: bottom; }
+  2.27% { transform: translate(200px, -100px); background: url("images/mail_closed.png") no-repeat; background-position: bottom; }
+  4.54% { transform: translate(400px, 0px); background: url("images/mail_closed.png") no-repeat; background-position: bottom; }
+  6.81% { transform: translate(300px, 200px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  9.08% { transform: translate(300px, 200px); background: url("images/mail_open.png") no-repeat; background-position: bottom;}
+
+  /* H12 TO H8 */
+  11.35% { transform: translate(300px, 200px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  13.62% { transform: translate(400px, 0px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  15.89% { transform: translate(500px, -100px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  18.16% { transform: translate(200px, -100px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  20.43% { transform: translate(700px, -500px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  22.7% { transform: translate(700px, -500px); background: url("images/mail_open.png") no-repeat; background-position: bottom;}
+
+  /* H8 TO H12 */
+  24.97% { transform: translate(700px, -500px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  27.24% { transform: translate(200px, -100px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  29.51% { transform: translate(400px, 0px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  31.78% { transform: translate(300px, 200px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  34.05% { transform: translate(300px, 200px); background: url("images/mail_open.png") no-repeat; background-position: bottom;}
+
+  /* H12 TO H8 */
+  36.32% { transform: translate(300px, 200px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  38.59% { transform: translate(400px, 0px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  40.86% { transform: translate(500px, -100px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  43.13% { transform: translate(200px, -100px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  45.4% { transform: translate(700px, -500px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  47.67% { transform: translate(700px, -500px); background: url("images/mail_open.png") no-repeat; background-position: bottom;}
+
+  /* H8 TO H13 */
+  49.94% { transform: translate(700px, -500px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  52.21% { transform: translate(200px, -100px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  54.48% { transform: translate(500px, -200px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  56.75% { transform: translate(500px, -100px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  59.02% { transform: translate(400px, 200px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  61.29% { transform: translate(400px, 200px); background: url("images/mail_open.png") no-repeat; background-position: bottom;}
+
+  /* H13 TO H8 */
+  63.56% { transform: translate(400px, 200px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  65.83% { transform: translate(500px, -100px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  68.1% { transform: translate(200px, -100px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  70.37% { transform: translate(700px, -500px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  72.64% { transform: translate(700px, -500px); background: url("images/mail_open.png") no-repeat; background-position: bottom;}
+
+  /* H8 TO H13 */
+  74.91% { transform: translate(700px, -500px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  77.18% { transform: translate(200px, -100px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  79.45% { transform: translate(500px, -200px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  81.72% { transform: translate(500px, -100px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  83.99% { transform: translate(400px, 200px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  86.26% { transform: translate(400px, 200px); background: url("images/mail_open.png") no-repeat; background-position: bottom;}
+
+
+  /* H13 TO H8 */
+  88.53% { transform: translate(400px, 200px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  90.8% { transform: translate(500px, -100px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  93.07% { transform: translate(200px, -100px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  95.34% { transform: translate(700px, -500px); background: url("images/mail_closed.png") no-repeat; background-position: bottom;}
+  97.61% { transform: translate(700px, -500px); background: url("images/mail_open.png") no-repeat; background-position: bottom;}
+  100% { background: url("images/mail_open.png") no-repeat; background-position: bottom; }
+}
+
+
+/* Centered text */
+.centered {
+  position: relative;
+  /* top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); */
+  color: #000000;
+}
+
+
+.H1 {
+  grid-area: h1;
+}
+.H2 {
+  grid-area: h2;
+}
+.H3 {
+  grid-area: h3;
+}
+.H4 {
+  grid-area: h4;
+}
+.H5 {
+  grid-area: h5;
+}
+.H6 {
+  grid-area: h6;
+}
+.H7 {
+  grid-area: h7;
+}
+.H8 {
+  grid-area: h8;
+}
+
+.H9 {
+  grid-area: h9;
+}
+.H10 {
+  grid-area: h10;
+}
+.H11 {
+  grid-area: h11;
+}
+.H12 {
+  grid-area: h12;
+}
+.H13 {
+  grid-area: h13;
+}
+.H14 {
+  grid-area: h14;
+}
+.H15 {
+  grid-area: h15;
+}
+.H16 {
+  grid-area: h16;
+}
+
+
+.R1 {
+  grid-area: r1;
+}
+.R2 {
+  grid-area: r2;
+}
+.R3 {
+  grid-area: r3;
+}
+.R4 {
+  grid-area: r4;
+}
+.R5 {
+  grid-area: r5;
+}
+.R6 {
+  grid-area: r6;
+}
+.R7 {
+  grid-area: r7;
+}
+.R8 {
+  grid-area: r8;
+}
+
 
 
 svg {

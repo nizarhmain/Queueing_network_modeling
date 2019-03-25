@@ -1,3 +1,6 @@
+// THIS SCRIPT IS NEVER CALLED 
+
+
 $(function () {
     class MarkovChain {
         constructor(transitionMatrix) {

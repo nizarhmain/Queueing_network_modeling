@@ -1,38 +1,38 @@
 & VARIABILI GLOBALI
   &Numero Hosts  Numero Router Numero Vie Numero Software   Capacità Emissione     Capacità Ricezione     Capacità Buffer
-         16            8          17       3                   capEmmissione               capRicezione                  capBuffer ;
+         16            8          17       3                   256.0               256.0                  400.0 ;
 & SIMULAZIONE
 & TMAX     TEMPO RQ    PERIOD
 S_tmax   S_tempoRQ      S_period;
 & ROUTERS
   &   ID   Uscite  Rate  P_Err
-       1      R_1_uscite   R_1_rate  R_1_p_err;
-       2      R_2_uscite   R_2_rate  R_2_p_err;
-       3      R_3_uscite   R_3_rate  R_3_p_err;
-       4      R_4_uscite   R_4_rate  R_4_p_err;
-       5      R_5_uscite   R_5_rate  R_5_p_err;
-       6      R_6_uscite   R_6_rate  R_6_p_err;
-       7      R_7_uscite   R_7_rate  R_7_p_err;
-       8      R_8_uscite   R_8_rate  R_8_p_err;
+       1      1   100.0  0.001;
+       2      3   123.0  0.001;
+       3      1   111.0  0.001;
+       4      2   122.0  0.001;
+       5      5   100.0  0.001;
+       6      2   123.0  0.001;
+       7      1   111.0  0.001;
+       8      2   50.0  0.001;
 & VIE
 & ID        Tempo Propag    Router Dest
-   1            V_1_temp_prop           V_1_router_des;
-   2            V_2_temp_prop           V_2_router_des;
-   3            V_3_temp_prop           V_3_router_des;
-   4            V_4_temp_prop           V_4_router_des;
-   5            V_5_temp_prop           V_5_router_des;
-   6            V_6_temp_prop           V_6_router_des;
-   7            V_7_temp_prop           V_7_router_des;
-   8            V_8_temp_prop           V_8_router_des;
-   9            V_9_temp_prop           V_9_router_des;
-  10            V_10_temp_prop          V_10_router_des;
-  11            V_11_temp_prop          V_11_router_des;
-  12            V_12_temp_prop          V_12_router_des;
-  13            V_13_temp_prop          V_13_router_des;
-  14            V_14_temp_prop          V_14_router_des;
-  15            V_15_temp_prop          V_15_router_des;
-  16            V_16_temp_prop          V_16_router_des;
-  17            V_17_temp_prop          V_17_router_des;
+   1            32.0           1;
+   2            32.0           2;
+   3            54.0           4;
+   4            34.0           5;
+   5            11.7           4;
+   6            22.0           8;
+   7            22.0           4;
+   8            12.4           8;
+   9            21.0           6;
+  10            10.5          6;
+  11            10.5          5;
+  12            20.0          7;
+  13            20.0          6;
+  14            11.0          3;
+  15            11.0          5;
+  16            32.0          3;
+  17            54.0          2;
 & INSTRADAMENTI ROUTER
      &Router_ID     Via IstrProb  Via Istr Prob Via IstrProb Via IstrProb Via IstrProb
              1       2  1.0;

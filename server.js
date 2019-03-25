@@ -25,7 +25,7 @@ app.get("/reset", (req, res) => {
 
 // reads the file result.txt and sends it to the front end
 app.get("/result", (req, res) => {
-  
+
   res.send(tokenizedData())
   /*
   try {
@@ -151,7 +151,7 @@ app.get("/model", (req, res) => {
   }
 
 
-  
+
   let terminals = []
 
   for (let i = 67; i < 83; i++) {
@@ -180,27 +180,27 @@ app.get("/model", (req, res) => {
     if(router_id !== vie[destination_via-1]) {
         links.push(createLink(i, router_id, vie[destination_via-1], destination_via))
     }
-    
-    if(parrots[i][3] !== undefined){ 
+
+    if(parrots[i][3] !== undefined){
       let destination_via = parrots[i][3]
         links.push(createLink(i, router_id, vie[destination_via-1], destination_via))
     }
-    
-    if(parrots[i][5] !== undefined){ 
+
+    if(parrots[i][5] !== undefined){
       let destination_via = parrots[i][5]
         links.push(createLink(i, router_id, vie[destination_via-1], destination_via))
     }
 
-    if(parrots[i][7] !== undefined){ 
+    if(parrots[i][7] !== undefined){
       let destination_via = parrots[i][7]
         links.push(createLink(i, router_id, vie[destination_via-1], destination_via))
     }
 
-    if(parrots[i][9] !== undefined){ 
+    if(parrots[i][9] !== undefined){
       let destination_via = parrots[i][9]
         links.push(createLink(i, router_id, vie[destination_via-1], destination_via))
     }
-    
+
   }
 
   // creating the links between hosts and routers
@@ -238,7 +238,7 @@ app.get("/model", (req, res) => {
 
   console.log(links);
 
-  res.send(finalRouters);
+  //res.send(finalRouters);
 
   //res.send(mockedData)
 });
